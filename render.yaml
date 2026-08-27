@@ -28,7 +28,6 @@ services:
     envVars:
       - key: PORT
         value: 3000
-    dockerBuildArgs:
       - key: NEXT_PUBLIC_API_URL
         value: https://weathergpt-backend.onrender.com # Replace with your backend's actual Render URL if service name differs
 
