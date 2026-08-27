@@ -1,0 +1,1323 @@
+"use client";
+
+import { useState, useEffect, useRef } from 'react';
+import dynamic from 'next/dynamic';
+import { 
+  CloudRain, Sun, Cloud, CloudLightning, Wind, Droplets, Compass, 
+  Eye, Thermometer, Sunset, Navigation, AlertTriangle, Shield, 
+  Map as MapIcon, Send, Mic, Volume2, Globe, Heart, Settings as SettingsIcon,
+  ChevronRight, RefreshCw, Layers, CheckCircle2, User, Activity, GraduationCap
+} from 'lucide-react';
+
+// Dynamically import WeatherMap with SSR disabled (Leaflet requires browser window)
+const WeatherMap = dynamic(() => import('./components/WeatherMap'), {
+  ssr: false,
+  loading: () => (
+    <div className="flex h-full w-full items-center justify-center bg-slate-900 text-slate-400">
+      <RefreshCw className="h-8 w-8 animate-spin mr-3 text-emerald-500" />
+      Loading Interactive Weather Map...
+    </div>
+  )
+});
+
+// Localization bundle
+const LOCALIZATION = {
+  en: {
+    app_title: "WeatherGPT",
+    tagline: "Understand the weather. Predict the risk. Take action.",
+    placeholder_search: "Search location...",
+    placeholder_chat: "Ask WeatherGPT about weather, travel safety, or crop advisory...",
+    nav_dashboard: "Dashboard",
+    nav_map: "Live Map",
+    nav_route: "Route Intel",
+    nav_alerts: "Official Alerts",
+    nav_disaster: "Command Center",
+    nav_settings: "Settings",
+    btn_travel: "Analyze Route",
+    label_risk: "Weather Risk Score",
+    label_why: "Why This Risk?",
+    label_recommendations: "AI Recommended Actions",
+    label_forecast: "7-Day Forecast",
+    mode_general: "General Public",
+    mode_traveller: "Traveller",
+    mode_farmer: "Farmer Mode",
+    mode_disaster: "Disaster Control",
+    mode_school: "School/College",
+    status_online: "Online",
+    status_offline: "Offline Mode",
+    disclaimer: "WeatherGPT provides AI-assisted insights based on available weather feeds. For emergencies, always follow instructions from authorized government and emergency management authorities."
+  },
+  hi: {
+    app_title: "वेदरजीपीटी",
+    tagline: "मौसम समझें। जोखिम का आकलन करें। कार्रवाई करें।",
+    placeholder_search: "स्थान खोजें...",
+    placeholder_chat: "मौसम, यात्रा सुरक्षा या फसल संबंधी सलाह के बारे में पूछें...",
+    nav_dashboard: "डैशबोर्ड",
+    nav_map: "लाइव नक्शा",
+    nav_route: "मार्ग सुरक्षा",
+    nav_alerts: "आधिकारिक अलर्ट",
+    nav_disaster: "नियंत्रण केंद्र",
+    nav_settings: "सेटिंग्स",
+    btn_travel: "मार्ग विश्लेषण करें",
+    label_risk: "मौसम जोखिम स्कोर",
+    label_why: "यह जोखिम क्यों?",
+    label_recommendations: "एआई अनुशंसित कार्रवाइयां",
+    label_forecast: "7-दिवसीय पूर्वानुमान",
+    mode_general: "सामान्य जनता",
+    mode_traveller: "यात्री",
+    mode_farmer: "किसान मोड",
+    mode_disaster: "आपदा प्रबंधन",
+    mode_school: "स्कूल/कॉलेज",
+    status_online: "ऑनलाइन",
+    status_offline: "ऑफ़लाइन मोड",
+    disclaimer: "वेदरजीपीटी उपलब्ध डेटा के आधार पर एआई-जनरेटेड इनसाइट्स प्रदान करता है। आपातकालीन स्थितियों में हमेशा आधिकारिक सरकारी निर्देशों का पालन करें।"
+  },
+  mr: {
+    app_title: "वेदरजीपीटी",
+    tagline: "हवामान समजून घ्या. जोखमीचा अंदाज लावा. कृती करा.",
+    placeholder_search: "ठिकाण शोधा...",
+    placeholder_chat: "हवामान, प्रवास सुरक्षितता किंवा पीक सल्ल्याबद्दल विचारा...",
+    nav_dashboard: "डॅशबोर्ड",
+    nav_map: "थेट नकाशा",
+    nav_route: "मार्ग सुरक्षितता",
+    nav_alerts: "अधिकृत इशारे",
+    nav_disaster: "नियंत्रण केंद्र",
+    nav_settings: "सेटिंग्ज",
+    btn_travel: "मार्ग विश्लेषण करा",
+    label_risk: "हवामान जोखीम गुण",
+    label_why: "हा धोका का आहे?",
+    label_recommendations: "एआय शिफारसी",
+    label_forecast: "7-दिवसांचा अंदाज",
+    mode_general: "सामान्य नागरिक",
+    mode_traveller: "प्रवासी मोड",
+    mode_farmer: "शेतकरी मोड",
+    mode_disaster: "आपदा नियंत्रण",
+    mode_school: "शाळा/कॉलेज",
+    status_online: "ऑनलाइन",
+    status_offline: "ऑफलाईन मोड",
+    disclaimer: "वेदरजीपीटी उपलब्ध डेटाच्या आधारे एआय-जनरेटेड इनसाइट्स प्रदान करते. आपत्कालीन परिस्थितीत नेहमी अधिकृत सरकारी सूचनांचे पालन करा."
+  }
+};
+
+const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+export default function WeatherGPT() {
+  // Navigation & Localization States
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'map' | 'route' | 'alerts' | 'disaster' | 'settings'>('dashboard');
+  const [currentLang, setCurrentLang] = useState<'en' | 'hi' | 'mr'>('en');
+  const [currentMode, setCurrentMode] = useState<'general' | 'traveller' | 'farmer' | 'disaster' | 'school'>('general');
+  const [searchLocation, setSearchLocation] = useState<string>('Pune');
+  const [isOffline, setIsOffline] = useState<boolean>(false);
+  const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+
+  // Weather Data States
+  const [weather, setWeather] = useState<any>(null);
+  const [risk, setRisk] = useState<any>(null);
+  const [selectedForecastIndex, setSelectedForecastIndex] = useState<number>(0);
+  const [routeFrom, setRouteFrom] = useState<string>('Pune');
+  const [routeTo, setRouteTo] = useState<string>('Mumbai');
+  const [routeAnalysis, setRouteAnalysis] = useState<any>(null);
+  const [disasterDashboard, setDisasterDashboard] = useState<any>(null);
+  const [allAlerts, setAllAlerts] = useState<any[]>([]);
+
+  // Chatbot States
+  const [chatOpen, setChatOpen] = useState<boolean>(false);
+  const [chatMessages, setChatMessages] = useState<any[]>([
+    {
+      id: 1,
+      role: 'assistant',
+      content: "Hello! I am WeatherGPT, your AI-powered meteorology copilot. How can I help you today?",
+      created_at: new Date().toISOString()
+    }
+  ]);
+  const [chatInput, setChatInput] = useState<string>('');
+  const [chatSessionId, setChatSessionId] = useState<string | null>(null);
+  const [isTyping, setIsTyping] = useState<boolean>(false);
+  const [isListening, setIsListening] = useState<boolean>(false);
+  const [speechSupported, setSpeechSupported] = useState<boolean>(false);
+  const [voicePlayback, setVoicePlayback] = useState<boolean>(false);
+
+  const chatEndRef = useRef<HTMLDivElement>(null);
+  const text = LOCALIZATION[currentLang];
+
+  // Initialize Speech Recognition
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      if (SpeechRecognition) {
+        setSpeechSupported(true);
+      }
+    }
+  }, []);
+
+  // Fetch initial data
+  useEffect(() => {
+    fetchWeatherData(searchLocation);
+    fetchDisasterMetrics();
+    fetchGlobalAlerts();
+  }, [searchLocation]);
+
+  // Keep chat scrolled to bottom
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [chatMessages, isTyping]);
+
+  // Load offline cache on mount
+  useEffect(() => {
+    const handleOnlineStatus = () => {
+      setIsOffline(!navigator.onLine);
+    };
+    window.addEventListener('online', handleOnlineStatus);
+    window.addEventListener('offline', handleOnlineStatus);
+    handleOnlineStatus();
+    
+    return () => {
+      window.removeEventListener('online', handleOnlineStatus);
+      window.removeEventListener('offline', handleOnlineStatus);
+    };
+  }, []);
+
+  const fetchWeatherData = async (loc: string) => {
+    setIsRefreshing(true);
+    try {
+      if (isOffline) {
+        // Fallback to local storage cache if offline
+        const cached = localStorage.getItem(`weather_cache_${loc.toLowerCase()}`);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          setWeather(parsed.weather);
+          setRisk(parsed.risk);
+          setIsRefreshing(false);
+          return;
+        }
+      }
+
+      const res = await fetch(`${BACKEND_URL}/api/weather/current?location=${loc}`);
+      if (res.ok) {
+        const data = await res.json();
+        setWeather(data.weather);
+        setRisk(data.risk);
+        
+        // Cache to local storage
+        localStorage.setItem(`weather_cache_${loc.toLowerCase()}`, JSON.stringify(data));
+      } else {
+        throw new Error("Failed to fetch weather");
+      }
+    } catch (e) {
+      console.error(e);
+      // Serve offline mocks
+      const localMocks: Record<string, any> = {
+        pune: {
+          location: "Pune, Maharashtra (Offline Cache)",
+          current: { temp: 27, feels_like: 29.5, condition: "Heavy Rain", humidity: 88, wind_speed: 18, rain_probability: 92, air_quality: "Good (AQI 38)", sunrise: "06:14 AM", sunset: "06:58 PM", icon: "cloud-lightning", source: "Offline Local Storage" },
+          forecast: [{ day: "Today", temp: 27, condition: "Heavy Rain", icon: "cloud-rain", rain_probability: 92, wind: 18, humidity: 88, risk_level: "SEVERE", recommendation: "Secure property." }]
+        }
+      };
+      const key = loc.toLowerCase();
+      if (localMocks[key]) {
+        setWeather(localMocks[key]);
+        setRisk({ score: 82, category: "SEVERE", color: "red", breakdown: [] });
+      }
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  const fetchDisasterMetrics = async () => {
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/disaster/dashboard`);
+      if (res.ok) {
+        const data = await res.json();
+        setDisasterDashboard(data);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const fetchGlobalAlerts = async () => {
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/alerts`);
+      if (res.ok) {
+        const data = await res.json();
+        setAllAlerts(data.alerts);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const runRouteAnalysis = async () => {
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/route/analyze`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ from_location: routeFrom, to_location: routeTo })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setRouteAnalysis(data);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const sendChatMessage = async (msgText?: string) => {
+    const textToSend = msgText || chatInput;
+    if (!textToSend.trim()) return;
+
+    // Add user message
+    const userMsg = {
+      id: Date.now(),
+      role: 'user',
+      content: textToSend,
+      created_at: new Date().toISOString()
+    };
+    setChatMessages(prev => [...prev, userMsg]);
+    setChatInput('');
+    setIsTyping(true);
+
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          query: textToSend,
+          session_id: chatSessionId,
+          role: currentMode,
+          lang: currentLang
+        })
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setChatSessionId(data.session_id);
+        
+        const assistantMsg = {
+          id: Date.now() + 1,
+          role: 'assistant',
+          content: data.answer_text,
+          metadata: data.metadata,
+          created_at: new Date().toISOString()
+        };
+        setChatMessages(prev => [...prev, assistantMsg]);
+        
+        // Voice playback if enabled
+        if (voicePlayback) {
+          speakText(data.answer_text);
+        }
+      }
+    } catch (e) {
+      console.error(e);
+      setChatMessages(prev => [...prev, {
+        id: Date.now() + 1,
+        role: 'assistant',
+        content: "Sorry, I am having trouble connecting to the AI brain right now. The local rule-based engine is offline.",
+        created_at: new Date().toISOString()
+      }]);
+    } finally {
+      setIsTyping(false);
+    }
+  };
+
+  // Web Speech Synthesis
+  const speakText = (txt: string) => {
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      // Cancel previous speech
+      window.speechSynthesis.cancel();
+      const cleanText = txt.replace(/[*#`[\]()]/g, ''); // strip markdown formatting
+      const utterance = new SpeechSynthesisUtterance(cleanText);
+      utterance.lang = currentLang === 'hi' ? 'hi-IN' : (currentLang === 'mr' ? 'mr-IN' : 'en-IN');
+      window.speechSynthesis.speak(utterance);
+    }
+  };
+
+  // Web Speech Recognition
+  const startListening = () => {
+    if (typeof window !== 'undefined') {
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      if (SpeechRecognition) {
+        const recognition = new SpeechRecognition();
+        recognition.lang = currentLang === 'hi' ? 'hi-IN' : (currentLang === 'mr' ? 'mr-IN' : 'en-US');
+        recognition.interimResults = false;
+        recognition.maxAlternatives = 1;
+
+        recognition.onstart = () => {
+          setIsListening(true);
+        };
+
+        recognition.onresult = (event: any) => {
+          const speechResult = event.results[0][0].transcript;
+          setChatInput(speechResult);
+          sendChatMessage(speechResult);
+        };
+
+        recognition.onerror = (e: any) => {
+          console.error(e);
+          setIsListening(false);
+        };
+
+        recognition.onend = () => {
+          setIsListening(false);
+        };
+
+        recognition.start();
+      }
+    }
+  };
+
+  // Icons Helper
+  const getWeatherIcon = (iconName: string) => {
+    switch (iconName) {
+      case 'cloud-lightning': return <CloudLightning className="h-10 w-10 text-violet-400" />;
+      case 'cloud-rain': return <CloudRain className="h-10 w-10 text-emerald-400" />;
+      case 'cloud-drizzle': return <CloudRain className="h-10 w-10 text-emerald-300" />;
+      case 'sun': return <Sun className="h-10 w-10 text-amber-400 animate-spin-slow" />;
+      case 'cloud': return <Cloud className="h-10 w-10 text-slate-400" />;
+      default: return <Cloud className="h-10 w-10 text-slate-400" />;
+    }
+  };
+
+  return (
+    <div className="flex h-screen w-screen overflow-hidden bg-slate-950 text-slate-100 font-sans">
+      
+      {/* SIDEBAR NAVIGATION - Premium Dark Glassmorphism */}
+      <aside className="hidden md:flex flex-col w-64 bg-slate-900/40 backdrop-blur-lg border-r border-slate-800/80 p-6 space-y-8 select-none z-10">
+        <div className="flex items-center space-x-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 shadow-lg shadow-emerald-500/20 text-white font-bold text-lg">
+            ⛈️
+          </div>
+          <div>
+            <h1 className="font-extrabold text-xl tracking-tight bg-gradient-to-r from-white via-slate-100 to-slate-400 bg-clip-text text-transparent">
+              {text.app_title}
+            </h1>
+            <span className="text-[10px] uppercase font-bold tracking-wider text-emerald-500/80">IMD Copilot</span>
+          </div>
+        </div>
+
+        <nav className="flex-1 space-y-1">
+          <button 
+            onClick={() => setActiveTab('dashboard')}
+            className={`flex w-full items-center space-x-3 px-4 py-3 rounded-xl transition duration-150 text-sm font-semibold
+              ${activeTab === 'dashboard' ? 'bg-gradient-to-r from-emerald-500/10 to-teal-500/5 text-emerald-400 border-l-4 border-emerald-500 shadow-md' : 'text-slate-400 hover:bg-slate-800/40 hover:text-slate-100'}
+            `}
+          >
+            <Activity className="h-5 w-5" />
+            <span>{text.nav_dashboard}</span>
+          </button>
+
+          <button 
+            onClick={() => setActiveTab('map')}
+            className={`flex w-full items-center space-x-3 px-4 py-3 rounded-xl transition duration-150 text-sm font-semibold
+              ${activeTab === 'map' ? 'bg-gradient-to-r from-emerald-500/10 to-teal-500/5 text-emerald-400 border-l-4 border-emerald-500 shadow-md' : 'text-slate-400 hover:bg-slate-800/40 hover:text-slate-100'}
+            `}
+          >
+            <MapIcon className="h-5 w-5" />
+            <span>{text.nav_map}</span>
+          </button>
+
+          <button 
+            onClick={() => setActiveTab('route')}
+            className={`flex w-full items-center space-x-3 px-4 py-3 rounded-xl transition duration-150 text-sm font-semibold
+              ${activeTab === 'route' ? 'bg-gradient-to-r from-emerald-500/10 to-teal-500/5 text-emerald-400 border-l-4 border-emerald-500 shadow-md' : 'text-slate-400 hover:bg-slate-800/40 hover:text-slate-100'}
+            `}
+          >
+            <Navigation className="h-5 w-5" />
+            <span>{text.nav_route}</span>
+          </button>
+
+          <button 
+            onClick={() => setActiveTab('alerts')}
+            className={`flex w-full items-center space-x-3 px-4 py-3 rounded-xl transition duration-150 text-sm font-semibold
+              ${activeTab === 'alerts' ? 'bg-gradient-to-r from-emerald-500/10 to-teal-500/5 text-emerald-400 border-l-4 border-emerald-500 shadow-md' : 'text-slate-400 hover:bg-slate-800/40 hover:text-slate-100'}
+            `}
+          >
+            <AlertTriangle className="h-5 w-5" />
+            <span>{text.nav_alerts}</span>
+          </button>
+
+          <button 
+            onClick={() => setActiveTab('disaster')}
+            className={`flex w-full items-center space-x-3 px-4 py-3 rounded-xl transition duration-150 text-sm font-semibold
+              ${activeTab === 'disaster' ? 'bg-gradient-to-r from-emerald-500/10 to-teal-500/5 text-emerald-400 border-l-4 border-emerald-500 shadow-md' : 'text-slate-400 hover:bg-slate-800/40 hover:text-slate-100'}
+            `}
+          >
+            <Shield className="h-5 w-5" />
+            <span>{text.nav_disaster}</span>
+          </button>
+
+          <button 
+            onClick={() => setActiveTab('settings')}
+            className={`flex w-full items-center space-x-3 px-4 py-3 rounded-xl transition duration-150 text-sm font-semibold
+              ${activeTab === 'settings' ? 'bg-gradient-to-r from-emerald-500/10 to-teal-500/5 text-emerald-400 border-l-4 border-emerald-500 shadow-md' : 'text-slate-400 hover:bg-slate-800/40 hover:text-slate-100'}
+            `}
+          >
+            <SettingsIcon className="h-5 w-5" />
+            <span>{text.nav_settings}</span>
+          </button>
+        </nav>
+
+        {/* User Info / Attribution */}
+        <div className="pt-6 border-t border-slate-800/60 text-[11px] text-slate-500">
+          <p>© MoES - Govt of India</p>
+          <p className="mt-1">Department of Meteorology</p>
+        </div>
+      </aside>
+
+      {/* MAIN CONTAINER */}
+      <main className="flex-1 flex flex-col h-full overflow-hidden bg-slate-950 relative">
+        
+        {/* HEADER BAR */}
+        <header className="flex h-16 items-center justify-between px-6 border-b border-slate-900/60 bg-slate-900/20 backdrop-blur-md z-10 select-none">
+          <div className="flex items-center space-x-4">
+            {/* Mobile Sidebar Hamburger Toggle */}
+            <div className="md:hidden flex items-center space-x-2">
+              <span className="text-xl">⛈️</span>
+              <span className="font-extrabold text-slate-100">{text.app_title}</span>
+            </div>
+            
+            {/* Location Autocomplete Selector */}
+            <div className="relative hidden md:block">
+              <select 
+                value={searchLocation}
+                onChange={(e) => setSearchLocation(e.target.value)}
+                className="w-48 bg-slate-900/80 border border-slate-800 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-200 focus:outline-none focus:border-emerald-500 cursor-pointer shadow-inner"
+              >
+                <option value="Pune">Pune, MH</option>
+                <option value="Mumbai">Mumbai, MH</option>
+                <option value="Lonavala">Lonavala (Ghats)</option>
+                <option value="Khopoli">Khopoli, MH</option>
+                <option value="Panvel">Panvel, MH</option>
+                <option value="Delhi">Delhi, NCR</option>
+                <option value="Bengaluru">Bengaluru, KA</option>
+                <option value="Chennai">Chennai, TN</option>
+                <option value="Hyderabad">Hyderabad, TS</option>
+              </select>
+            </div>
+          </div>
+
+          {/* RIGHT CONTROLS: Language, Mode, Offline indicators */}
+          <div className="flex items-center space-x-3">
+            {/* Active Mode Indicator Badge */}
+            <span className="hidden sm:inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-slate-800 text-emerald-400 border border-slate-700/50">
+              <User className="h-3.5 w-3.5" />
+              <span>{currentMode === 'general' ? text.mode_general : currentMode === 'farmer' ? text.mode_farmer : currentMode === 'disaster' ? text.mode_disaster : currentMode === 'traveller' ? text.mode_traveller : text.mode_school}</span>
+            </span>
+
+            {/* Offline/Online Status Indicator */}
+            <span className={`inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-bold border
+              ${isOffline 
+                ? 'bg-rose-950/60 border-rose-500/30 text-rose-300' 
+                : 'bg-emerald-950/60 border-emerald-500/30 text-emerald-300'
+              }
+            `}>
+              <span className={`h-2 w-2 rounded-full ${isOffline ? 'bg-rose-500 animate-pulse' : 'bg-emerald-500 animate-pulse'}`} />
+              <span>{isOffline ? text.status_offline : text.status_online}</span>
+            </span>
+
+            {/* Language Selection */}
+            <div className="flex bg-slate-900 border border-slate-800 rounded-xl p-0.5 shadow-md">
+              <button 
+                onClick={() => setCurrentLang('en')} 
+                className={`px-2.5 py-1 text-xs font-bold rounded-lg transition ${currentLang === 'en' ? 'bg-emerald-500 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'}`}
+              >
+                EN
+              </button>
+              <button 
+                onClick={() => setCurrentLang('hi')} 
+                className={`px-2.5 py-1 text-xs font-bold rounded-lg transition ${currentLang === 'hi' ? 'bg-emerald-500 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'}`}
+              >
+                हिं
+              </button>
+              <button 
+                onClick={() => setCurrentLang('mr')} 
+                className={`px-2.5 py-1 text-xs font-bold rounded-lg transition ${currentLang === 'mr' ? 'bg-emerald-500 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'}`}
+              >
+                मरा
+              </button>
+            </div>
+          </div>
+        </header>
+
+        {/* MOBILE NAVIGATION - Top select bar */}
+        <div className="md:hidden flex bg-slate-900 border-b border-slate-800 p-2 overflow-x-auto whitespace-nowrap select-none">
+          <button onClick={() => setActiveTab('dashboard')} className={`px-4 py-2 text-xs font-bold rounded-lg ${activeTab === 'dashboard' ? 'bg-slate-800 text-emerald-400' : 'text-slate-400'}`}>{text.nav_dashboard}</button>
+          <button onClick={() => setActiveTab('map')} className={`px-4 py-2 text-xs font-bold rounded-lg ${activeTab === 'map' ? 'bg-slate-800 text-emerald-400' : 'text-slate-400'}`}>{text.nav_map}</button>
+          <button onClick={() => setActiveTab('route')} className={`px-4 py-2 text-xs font-bold rounded-lg ${activeTab === 'route' ? 'bg-slate-800 text-emerald-400' : 'text-slate-400'}`}>{text.nav_route}</button>
+          <button onClick={() => setActiveTab('alerts')} className={`px-4 py-2 text-xs font-bold rounded-lg ${activeTab === 'alerts' ? 'bg-slate-800 text-emerald-400' : 'text-slate-400'}`}>{text.nav_alerts}</button>
+          <button onClick={() => setActiveTab('disaster')} className={`px-4 py-2 text-xs font-bold rounded-lg ${activeTab === 'disaster' ? 'bg-slate-800 text-emerald-400' : 'text-slate-400'}`}>{text.nav_disaster}</button>
+          <button onClick={() => setActiveTab('settings')} className={`px-4 py-2 text-xs font-bold rounded-lg ${activeTab === 'settings' ? 'bg-slate-800 text-emerald-400' : 'text-slate-400'}`}>{text.nav_settings}</button>
+        </div>
+
+        {/* TAB WORKSPACE */}
+        <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-8 select-text">
+
+          {/* TAB 1: WEATHER DASHBOARD */}
+          {activeTab === 'dashboard' && weather && (
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+              
+              {/* Left & Middle Column (Main Weather Info) */}
+              <div className="xl:col-span-2 space-y-8">
+                
+                {/* Current Weather Card */}
+                <div className="bg-slate-900/50 backdrop-blur-md border border-slate-800/80 rounded-2xl p-6 md:p-8 shadow-xl relative overflow-hidden">
+                  <div className="absolute right-0 top-0 translate-x-1/4 -translate-y-1/4 h-64 w-64 rounded-full bg-emerald-500/10 blur-[80px]" />
+                  
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h2 className="text-2xl font-extrabold text-white tracking-tight uppercase">{weather.location}</h2>
+                      <p className="text-xs text-slate-400 mt-1 flex items-center">
+                        <span className="inline-block h-2 w-2 rounded-full bg-emerald-500 mr-2 animate-pulse" />
+                        Source: {weather.current.source} ({weather.current.updated_at})
+                      </p>
+                    </div>
+                    {isRefreshing && <RefreshCw className="h-5 w-5 animate-spin text-emerald-400" />}
+                  </div>
+
+                  <div className="flex flex-col md:flex-row items-center md:items-end justify-between mt-8 gap-6">
+                    <div className="flex items-center space-x-6">
+                      <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-slate-800/60 border border-slate-700/40 shadow-inner">
+                        {getWeatherIcon(weather.current.icon)}
+                      </div>
+                      <div>
+                        <span className="text-5xl md:text-6xl font-black text-white leading-none tracking-tighter">
+                          {weather.current.temp}°C
+                        </span>
+                        <h3 className="text-lg font-bold text-slate-300 mt-1">{weather.current.condition}</h3>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-x-8 gap-y-3 w-full md:w-auto text-sm border-t md:border-t-0 border-slate-800/80 pt-4 md:pt-0">
+                      <div className="text-slate-400">Feels Like: <span className="font-semibold text-slate-200">{weather.current.feels_like}°C</span></div>
+                      <div className="text-slate-400">Humidity: <span className="font-semibold text-slate-200">{weather.current.humidity}%</span></div>
+                      <div className="text-slate-400">Wind: <span className="font-semibold text-slate-200">{weather.current.wind_speed} km/h {weather.current.wind_direction}</span></div>
+                      <div className="text-slate-400">Precipitation: <span className="font-semibold text-slate-200">{weather.current.rain_probability}%</span></div>
+                    </div>
+                  </div>
+
+                  {/* Micro dashboard parameters block */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-8 pt-6 border-t border-slate-800/80 text-center">
+                    <div className="bg-slate-900/60 rounded-xl p-3 border border-slate-800/40">
+                      <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Atm Pressure</p>
+                      <p className="text-sm font-extrabold text-slate-200 mt-1">{weather.current.pressure} hPa</p>
+                    </div>
+                    <div className="bg-slate-900/60 rounded-xl p-3 border border-slate-800/40">
+                      <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Visibility</p>
+                      <p className="text-sm font-extrabold text-slate-200 mt-1">{weather.current.visibility} km</p>
+                    </div>
+                    <div className="bg-slate-900/60 rounded-xl p-3 border border-slate-800/40">
+                      <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">UV Index</p>
+                      <p className="text-sm font-extrabold text-slate-200 mt-1">{weather.current.uv_index}</p>
+                    </div>
+                    <div className="bg-slate-900/60 rounded-xl p-3 border border-slate-800/40">
+                      <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Air Quality</p>
+                      <p className="text-xs font-extrabold text-emerald-400 mt-1 truncate">{weather.current.air_quality}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 7-Day Forecast Grid */}
+                <div className="bg-slate-900/30 border border-slate-800/80 rounded-2xl p-6 shadow-xl">
+                  <h3 className="text-lg font-bold text-slate-200 mb-4">{text.label_forecast}</h3>
+                  <div className="flex space-x-4 overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-slate-800">
+                    {weather.forecast.map((fc: any, idx: number) => (
+                      <button 
+                        key={idx}
+                        onClick={() => setSelectedForecastIndex(idx)}
+                        className={`flex-none w-32 p-4 rounded-xl border transition text-center select-none cursor-pointer
+                          ${selectedForecastIndex === idx 
+                            ? 'bg-emerald-500/10 border-emerald-500 text-emerald-400 shadow-md' 
+                            : 'bg-slate-900/55 border-slate-800/60 text-slate-400 hover:border-slate-700/60 hover:text-slate-200'
+                          }
+                        `}
+                      >
+                        <p className="text-xs font-bold">{fc.day}</p>
+                        <div className="flex justify-center my-3">{getWeatherIcon(fc.icon)}</div>
+                        <p className="text-base font-black text-white">{fc.temp}°C</p>
+                        <span className={`inline-block mt-2 px-1.5 py-0.5 rounded text-[8px] font-bold text-white
+                          ${fc.risk_level === 'SEVERE' ? 'bg-red-500' : 
+                            fc.risk_level === 'HIGH' ? 'bg-orange-500' : 
+                            fc.risk_level === 'MODERATE' ? 'bg-amber-500' : 'bg-emerald-500'}
+                        `}>
+                          {fc.risk_level}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Selected Day forecast details */}
+                  {weather.forecast[selectedForecastIndex] && (
+                    <div className="mt-6 p-4 rounded-xl bg-slate-900/60 border border-slate-800/60 flex flex-col md:flex-row gap-6 justify-between items-start md:items-center">
+                      <div>
+                        <span className="text-[10px] font-extrabold tracking-wider uppercase text-emerald-500">Day Details</span>
+                        <h4 className="text-base font-black text-white mt-0.5">
+                          {weather.forecast[selectedForecastIndex].day} — {weather.forecast[selectedForecastIndex].condition}
+                        </h4>
+                        <p className="text-xs text-slate-400 mt-1 max-w-xl">
+                          <span className="font-bold text-slate-300">AI Advice:</span> {weather.forecast[selectedForecastIndex].recommendation}
+                        </p>
+                      </div>
+                      
+                      <div className="flex gap-6 text-xs text-slate-400 border-t md:border-t-0 border-slate-800 pt-3 md:pt-0 w-full md:w-auto">
+                        <div>Rain Prob: <span className="font-bold text-slate-200">{weather.forecast[selectedForecastIndex].rain_probability}%</span></div>
+                        <div>Wind: <span className="font-bold text-slate-200">{weather.forecast[selectedForecastIndex].wind} km/h</span></div>
+                        <div>Humidity: <span className="font-bold text-slate-200">{weather.forecast[selectedForecastIndex].humidity}%</span></div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Dynamic SVG Analytics Graphs (Replaces heavy canvas charts) */}
+                <div className="bg-slate-900/30 border border-slate-800/80 rounded-2xl p-6 shadow-xl">
+                  <h3 className="text-lg font-bold text-slate-200 mb-4">7-Day Precipitation Trend (%)</h3>
+                  <div className="h-32 flex items-end justify-between gap-4 mt-6">
+                    {weather.forecast.map((fc: any, idx: number) => (
+                      <div key={idx} className="flex-1 flex flex-col items-center group cursor-help">
+                        {/* Bar */}
+                        <div 
+                          className="w-full bg-gradient-to-t from-emerald-600 to-teal-500 rounded-t-md transition-all duration-500 group-hover:opacity-85 shadow"
+                          style={{ height: `${fc.rain_probability}%` }}
+                        />
+                        {/* Text */}
+                        <span className="text-[10px] font-bold text-slate-300 mt-2">{fc.rain_probability}%</span>
+                        <span className="text-[9px] text-slate-500 mt-0.5">{fc.day.substring(0, 3)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+              </div>
+
+              {/* Right Column: AI Risk Engine & Official Alerts */}
+              <div className="space-y-8">
+                
+                {/* Weather Risk Engine Card */}
+                {risk && (
+                  <div className="bg-slate-900/50 backdrop-blur-md border border-slate-800/80 rounded-2xl p-6 shadow-xl flex flex-col justify-between">
+                    <div>
+                      <div className="flex justify-between items-center">
+                        <h3 className="text-md font-bold text-slate-200">{text.label_risk}</h3>
+                        <span className={`px-2.5 py-0.5 rounded-full text-xs font-black text-white uppercase
+                          ${risk.category === 'SEVERE' ? 'bg-red-500 animate-pulse' : 
+                            risk.category === 'HIGH' ? 'bg-orange-500' : 
+                            risk.category === 'MODERATE' ? 'bg-amber-500' : 'bg-emerald-500'}
+                        `}>
+                          {risk.category}
+                        </span>
+                      </div>
+
+                      {/* Large circular risk layout */}
+                      <div className="flex flex-col items-center justify-center my-6">
+                        <div className={`relative flex h-28 w-28 items-center justify-center rounded-full border-4 shadow-inner
+                          ${risk.category === 'SEVERE' ? 'border-red-500' : 
+                            risk.category === 'HIGH' ? 'border-orange-500' : 
+                            risk.category === 'MODERATE' ? 'border-amber-500' : 'border-emerald-500'}
+                        `}>
+                          <span className="text-3xl font-black text-white">{risk.score}</span>
+                          <span className="text-[9px] text-slate-400 absolute bottom-3">/ 100</span>
+                        </div>
+                      </div>
+
+                      {/* Risk breakdown parameters */}
+                      <div className="space-y-2 mt-4">
+                        <h4 className="text-xs uppercase font-extrabold tracking-wider text-slate-400">{text.label_why}</h4>
+                        <div className="space-y-1 text-xs">
+                          {risk.breakdown.length > 0 ? (
+                            risk.breakdown.map((item: any, idx: number) => (
+                              <div key={idx} className="flex justify-between items-center py-1.5 border-b border-slate-800/40">
+                                <span className="text-slate-300">{item.factor}</span>
+                                <span className="font-extrabold text-emerald-400">+{item.weight}</span>
+                              </div>
+                            ))
+                          ) : (
+                            <p className="text-slate-500 italic py-2">No high-risk indicators active.</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-6 pt-4 border-t border-slate-800 text-[10px] text-slate-500 italic">
+                      {risk.disclaimer}
+                    </div>
+                  </div>
+                )}
+
+                {/* Smart Disaster Alert Card */}
+                {weather.alerts && weather.alerts.length > 0 ? (
+                  weather.alerts.map((al: any, idx: number) => (
+                    <div key={idx} className="bg-rose-950/20 border-2 border-rose-500/30 rounded-2xl p-6 shadow-xl relative overflow-hidden">
+                      <div className="absolute right-0 top-0 h-16 w-16 bg-rose-500/10 rounded-full blur-2xl" />
+                      
+                      <div className="flex items-center space-x-2 text-rose-500">
+                        <AlertTriangle className="h-5 w-5 animate-bounce" />
+                        <h3 className="text-sm font-extrabold uppercase tracking-wider">🔴 ACTIVE WARNING</h3>
+                      </div>
+
+                      <h4 className="text-base font-black text-white mt-3">{al.title}</h4>
+                      <p className="text-xs text-slate-400 mt-1 font-semibold">Location: {weather.location}</p>
+                      <p className="text-xs text-slate-400 mt-1 font-semibold">Period: {al.expected_period}</p>
+
+                      <div className="mt-4 text-xs text-slate-300">
+                        <p className="font-bold text-slate-200">Potential Impacts:</p>
+                        <ul className="list-disc pl-4 space-y-1 mt-1">
+                          {al.impacts.map((imp: string, i: number) => (
+                            <li key={i}>{imp}</li>
+                          ))}
+                        </ul>
+                      </div>
+
+                      <div className="mt-4 pt-4 border-t border-rose-500/15 text-xs text-emerald-300 bg-emerald-950/25 p-3 rounded-lg border border-emerald-500/15">
+                        <p className="font-extrabold text-slate-100 flex items-center">
+                          <CheckCircle2 className="h-4 w-4 mr-1 text-emerald-400" />
+                          Recommended Emergency Actions:
+                        </p>
+                        <ul className="list-decimal pl-4 space-y-1 mt-1.5">
+                          {al.actions.map((act: string, i: number) => (
+                            <li key={i}>{act}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="bg-slate-900/30 border border-slate-800/80 rounded-2xl p-6 text-center shadow-xl">
+                    <CheckCircle2 className="h-8 w-8 mx-auto text-emerald-500" />
+                    <h4 className="font-bold text-slate-300 mt-3">No Active Weather Warnings</h4>
+                    <p className="text-xs text-slate-500 mt-1">Current area is classified as clear by meteorological alerts.</p>
+                  </div>
+                )}
+
+              </div>
+
+            </div>
+          )}
+
+          {/* TAB 2: LIVE WEATHER MAP */}
+          {activeTab === 'map' && (
+            <div className="h-[calc(100vh-12rem)] flex flex-col md:flex-row gap-6">
+              {/* Map controls panel */}
+              <div className="md:w-64 flex-none bg-slate-900/40 backdrop-blur-md border border-slate-800/80 rounded-2xl p-6 space-y-6">
+                <div>
+                  <h3 className="text-base font-bold text-white mb-2">Map Layers</h3>
+                  <p className="text-xs text-slate-500">Toggle meteorological dashboard indicators.</p>
+                </div>
+
+                <div className="space-y-2">
+                  <button className="flex w-full items-center justify-between px-4 py-2.5 rounded-xl bg-slate-800 text-xs font-semibold text-emerald-400 border border-slate-700/60">
+                    <span className="flex items-center"><Layers className="h-4 w-4 mr-2" /> Temperature</span>
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                  </button>
+                  <button className="flex w-full items-center justify-between px-4 py-2.5 rounded-xl hover:bg-slate-800/40 text-xs font-semibold text-slate-400 hover:text-slate-200">
+                    <span className="flex items-center"><CloudRain className="h-4 w-4 mr-2" /> Rainfall</span>
+                  </button>
+                  <button className="flex w-full items-center justify-between px-4 py-2.5 rounded-xl hover:bg-slate-800/40 text-xs font-semibold text-slate-400 hover:text-slate-200">
+                    <span className="flex items-center"><Wind className="h-4 w-4 mr-2" /> Wind Speeds</span>
+                  </button>
+                  <button className="flex w-full items-center justify-between px-4 py-2.5 rounded-xl hover:bg-slate-800/40 text-xs font-semibold text-slate-400 hover:text-slate-200">
+                    <span className="flex items-center"><AlertTriangle className="h-4 w-4 mr-2" /> Warning Areas</span>
+                  </button>
+                </div>
+
+                <div className="text-[10px] text-slate-500 pt-6 border-t border-slate-800/60">
+                  <p>Click pins for risk details and live government bulletins.</p>
+                </div>
+              </div>
+
+              {/* Leaflet container */}
+              <div className="flex-1 min-h-[400px] h-full rounded-2xl overflow-hidden shadow-2xl border border-slate-800">
+                <WeatherMap activeLayer="temp" onMarkerClick={(name) => setSearchLocation(name)} />
+              </div>
+            </div>
+          )}
+
+          {/* TAB 3: ROUTE WEATHER INTELLIGENCE */}
+          {activeTab === 'route' && (
+            <div className="space-y-8">
+              
+              {/* Route Input controls */}
+              <div className="bg-slate-900/50 backdrop-blur-md border border-slate-800/80 rounded-2xl p-6 shadow-xl">
+                <h3 className="text-lg font-black text-white mb-2">Weather Route Intelligence</h3>
+                <p className="text-xs text-slate-500 mb-6">Identify severe weather hazards and optimal departure timings along travel corridors.</p>
+
+                <div className="flex flex-col md:flex-row gap-4 items-end">
+                  <div className="flex-1 w-full">
+                    <label className="text-[10px] uppercase font-extrabold tracking-wider text-slate-500 block mb-1.5">From</label>
+                    <select 
+                      value={routeFrom}
+                      onChange={(e) => setRouteFrom(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-200 focus:outline-none focus:border-emerald-500"
+                    >
+                      <option value="Pune">Pune</option>
+                      <option value="Mumbai">Mumbai</option>
+                    </select>
+                  </div>
+
+                  <div className="flex-none flex items-center justify-center p-3 text-slate-600">
+                    <ChevronRight className="h-5 w-5 transform rotate-90 md:rotate-0" />
+                  </div>
+
+                  <div className="flex-1 w-full">
+                    <label className="text-[10px] uppercase font-extrabold tracking-wider text-slate-500 block mb-1.5">To</label>
+                    <select 
+                      value={routeTo}
+                      onChange={(e) => setRouteTo(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-200 focus:outline-none focus:border-emerald-500"
+                    >
+                      <option value="Mumbai">Mumbai</option>
+                      <option value="Pune">Pune</option>
+                    </select>
+                  </div>
+
+                  <button 
+                    onClick={runRouteAnalysis}
+                    className="w-full md:w-auto px-6 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-bold text-sm shadow-lg shadow-emerald-500/10 flex items-center justify-center gap-2"
+                  >
+                    <Navigation className="h-4 w-4" />
+                    <span>{text.btn_travel}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Route timeline analysis display */}
+              {routeAnalysis && (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                  
+                  {/* Timeline Stop points */}
+                  <div className="lg:col-span-2 bg-slate-900/30 border border-slate-800/80 rounded-2xl p-6 shadow-xl">
+                    <h4 className="text-base font-extrabold text-white mb-6">Route Travel Waypoints</h4>
+                    
+                    <div className="relative pl-8 space-y-8 before:absolute before:left-3.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-800">
+                      {routeAnalysis.timeline.map((stop: any, idx: number) => (
+                        <div key={idx} className="relative flex justify-between items-start">
+                          
+                          {/* Colored timeline dot */}
+                          <span className={`absolute -left-8 flex h-7.5 w-7.5 items-center justify-center rounded-full border-2 border-slate-950 text-xs font-bold text-white shadow-md
+                            ${stop.color === 'red' ? 'bg-red-500' : 
+                              stop.color === 'orange' ? 'bg-orange-500' : 
+                              stop.color === 'amber' ? 'bg-amber-500' : 'bg-emerald-500'}
+                          `}>
+                            {idx + 1}
+                          </span>
+
+                          <div>
+                            <h5 className="text-sm font-black text-slate-100 uppercase">{stop.name}</h5>
+                            <p className="text-xs text-slate-500 mt-0.5">{stop.condition} — {stop.temp}°C</p>
+                            <p className="text-xs text-slate-400 mt-1 italic">Note: {stop.recommendation}</p>
+                          </div>
+
+                          <span className={`px-2 py-0.5 rounded text-[9px] font-black text-white
+                            ${stop.risk_level === 'SEVERE' ? 'bg-red-500' : 
+                              stop.risk_level === 'HIGH' ? 'bg-orange-500' : 
+                              stop.risk_level === 'MODERATE' ? 'bg-amber-500' : 'bg-emerald-500'}
+                          `}>
+                            {stop.risk_level}
+                          </span>
+
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* AI Travel Recommendation */}
+                  <div className="bg-slate-900/50 backdrop-blur-md border border-slate-800/80 rounded-2xl p-6 shadow-xl flex flex-col justify-between relative overflow-hidden">
+                    <div className="absolute right-0 top-0 h-16 w-16 bg-emerald-500/10 rounded-full blur-2xl" />
+                    
+                    <div>
+                      <div className="flex items-center space-x-2 text-emerald-400">
+                        <Heart className="h-5 w-5 animate-pulse" />
+                        <h4 className="text-sm font-bold uppercase tracking-wider">AI Travel Guidance</h4>
+                      </div>
+                      
+                      <div className="mt-4 p-4 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-300 leading-relaxed font-medium">
+                        {routeAnalysis.ai_travel_recommendation}
+                      </div>
+
+                      <div className="mt-6 space-y-3">
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="text-slate-500">Route path:</span>
+                          <span className="font-bold text-slate-200">{routeAnalysis.route_path}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="text-slate-500">Highest Risk:</span>
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold text-white uppercase bg-${routeAnalysis.highest_risk_color}-500`}>
+                            {routeAnalysis.highest_risk_level}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-8 pt-4 border-t border-slate-800 text-[10px] text-slate-500">
+                      Source: {routeAnalysis.source}
+                    </div>
+                  </div>
+
+                </div>
+              )}
+
+            </div>
+          )}
+
+          {/* TAB 4: OFFICIAL METEOROLOGICAL ALERTS */}
+          {activeTab === 'alerts' && (
+            <div className="space-y-6">
+              <div className="flex justify-between items-center mb-6">
+                <div>
+                  <h3 className="text-lg font-black text-white">Active Meteorological Warning Bulletins</h3>
+                  <p className="text-xs text-slate-500 mt-1">Authorized alerts published by India Meteorological Department (IMD) warning cells.</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {allAlerts.length > 0 ? (
+                  allAlerts.map((al: any, idx: number) => (
+                    <div key={idx} className={`border rounded-2xl p-6 shadow-lg relative overflow-hidden bg-slate-900/30
+                      ${al.severity === 'SEVERE' ? 'border-red-500/35 bg-red-950/10' : 
+                        al.severity === 'WARNING' ? 'border-orange-500/35 bg-orange-950/10' : 
+                        al.severity === 'WATCH' ? 'border-amber-500/35 bg-amber-950/10' : 'border-slate-800'}
+                    `}>
+                      <div className="flex justify-between items-start">
+                        <div className="flex items-center space-x-2">
+                          <AlertTriangle className={`h-5 w-5 ${al.severity === 'SEVERE' ? 'text-red-400' : al.severity === 'WARNING' ? 'text-orange-400' : 'text-amber-400'}`} />
+                          <h4 className="font-extrabold text-sm uppercase tracking-wider text-slate-200">{al.severity} ALERT</h4>
+                        </div>
+                        <span className="text-[10px] text-slate-500 font-bold bg-slate-800 px-2 py-0.5 rounded-full">{al.location}</span>
+                      </div>
+
+                      <h5 className="text-base font-black text-white mt-4">{al.title}</h5>
+                      <p className="text-xs text-slate-400 mt-1">{al.description}</p>
+                      <p className="text-[11px] text-slate-500 mt-2 font-semibold">Expected: {al.expected_period}</p>
+
+                      <div className="mt-4 p-3 rounded-lg bg-slate-950/60 border border-slate-800 text-xs text-slate-300">
+                        <p className="font-extrabold text-slate-200 mb-1">Key Actions:</p>
+                        <ul className="list-disc pl-4 space-y-1">
+                          {al.actions && Array.isArray(al.actions) ? al.actions.map((act: string, i: number) => (
+                            <li key={i}>{act}</li>
+                          )) : typeof al.actions === 'string' ? JSON.parse(al.actions).map((act: string, i: number) => (
+                            <li key={i}>{act}</li>
+                          )) : <li>Follow emergency instructions.</li>}
+                        </ul>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-slate-500 italic">No active alert bulletins reported.</p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* TAB 5: DISASTER COMMAND CENTER */}
+          {activeTab === 'disaster' && disasterDashboard && (
+            <div className="space-y-8">
+              
+              {/* Aggregated command stats */}
+              <div className="grid grid-cols-2 lg:grid-cols-5 gap-6">
+                <div className="bg-slate-900/50 backdrop-blur-md border border-slate-800/80 rounded-2xl p-5 shadow text-center">
+                  <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Active Alerts</p>
+                  <p className="text-2xl font-black text-rose-500 mt-2">{disasterDashboard.metrics.active_alerts}</p>
+                </div>
+                <div className="bg-slate-900/50 backdrop-blur-md border border-slate-800/80 rounded-2xl p-5 shadow text-center">
+                  <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">High Risk Areas</p>
+                  <p className="text-2xl font-black text-orange-500 mt-2">{disasterDashboard.metrics.high_risk_areas}</p>
+                </div>
+                <div className="bg-slate-900/50 backdrop-blur-md border border-slate-800/80 rounded-2xl p-5 shadow text-center">
+                  <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Flood Risk Zones</p>
+                  <p className="text-2xl font-black text-amber-500 mt-2">{disasterDashboard.metrics.flood_risk_count}</p>
+                </div>
+                <div className="bg-slate-900/50 backdrop-blur-md border border-slate-800/80 rounded-2xl p-5 shadow text-center">
+                  <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Heavy Rain Districts</p>
+                  <p className="text-2xl font-black text-sky-400 mt-2">{disasterDashboard.metrics.heavy_rainfall_count}</p>
+                </div>
+                <div className="bg-slate-900/50 backdrop-blur-md border border-slate-800/80 rounded-2xl p-5 shadow text-center col-span-2 lg:col-span-1">
+                  <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Severe Storms</p>
+                  <p className="text-2xl font-black text-violet-400 mt-2">{disasterDashboard.metrics.severe_weather_count}</p>
+                </div>
+              </div>
+
+              {/* AI Situation Summary & Critical Zones Grid */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                
+                {/* AI Summary card */}
+                <div className="lg:col-span-2 bg-slate-900/30 border border-slate-800/80 rounded-2xl p-6 shadow-xl relative overflow-hidden">
+                  <div className="absolute right-0 top-0 h-20 w-20 bg-rose-500/10 rounded-full blur-3xl animate-pulse" />
+                  
+                  <div className="flex items-center space-x-2 text-rose-400 mb-4">
+                    <Activity className="h-5 w-5" />
+                    <h3 className="text-base font-extrabold uppercase tracking-wider">AI Tactical Situation Summary</h3>
+                  </div>
+
+                  <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 text-sm text-slate-300 leading-relaxed font-semibold">
+                    {disasterDashboard.ai_situation_summary}
+                  </div>
+
+                  <p className="text-[10px] text-slate-500 mt-4 italic">
+                    Note: Tactical summaries are compiled dynamically from official feeds and topography coefficients.
+                  </p>
+                </div>
+
+                {/* Critical zones priority table */}
+                <div className="bg-slate-900/50 backdrop-blur-md border border-slate-800/80 rounded-2xl p-6 shadow-xl">
+                  <h4 className="text-base font-bold text-white mb-4">Priority Districts</h4>
+                  
+                  <div className="space-y-3">
+                    {disasterDashboard.critical_zones.map((zone: any, idx: number) => (
+                      <div key={idx} className="flex justify-between items-center p-3 rounded-xl bg-slate-950/60 border border-slate-800/40 text-xs">
+                        <div>
+                          <p className="font-extrabold text-slate-200 uppercase">{zone.location}</p>
+                          <p className="text-slate-500 mt-0.5">{zone.hazard}</p>
+                        </div>
+                        <div className="text-right">
+                          <span className={`px-2 py-0.5 rounded text-[8px] font-black text-white uppercase
+                            ${zone.severity === 'SEVERE' ? 'bg-red-500' : 'bg-orange-500'}
+                          `}>
+                            {zone.severity}
+                          </span>
+                          <p className="text-slate-400 mt-1 font-bold">Score: {zone.risk_score}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+              </div>
+
+            </div>
+          )}
+
+          {/* TAB 6: SETTINGS (PERSONAS & LOCALIZATION) */}
+          {activeTab === 'settings' && (
+            <div className="max-w-2xl bg-slate-900/30 border border-slate-800/80 rounded-2xl p-6 md:p-8 space-y-8 shadow-xl">
+              <div>
+                <h3 className="text-lg font-black text-white">WeatherGPT Controls & Settings</h3>
+                <p className="text-xs text-slate-500 mt-1">Configure user personas, default languages, and simulated network environments.</p>
+              </div>
+
+              {/* User Mode Toggles */}
+              <div className="space-y-3">
+                <label className="text-[10px] uppercase font-extrabold tracking-wider text-slate-400 block">Personalized User Role Mode</label>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <button 
+                    onClick={() => setCurrentMode('general')}
+                    className={`flex items-center space-x-2.5 px-4 py-3 rounded-xl border text-xs font-bold transition text-left
+                      ${currentMode === 'general' ? 'bg-emerald-500/10 border-emerald-500 text-emerald-400' : 'bg-slate-900/50 border-slate-800 text-slate-400 hover:border-slate-700'}
+                    `}
+                  >
+                    <User className="h-4 w-4" />
+                    <span>{text.mode_general}</span>
+                  </button>
+                  <button 
+                    onClick={() => setCurrentMode('farmer')}
+                    className={`flex items-center space-x-2.5 px-4 py-3 rounded-xl border text-xs font-bold transition text-left
+                      ${currentMode === 'farmer' ? 'bg-emerald-500/10 border-emerald-500 text-emerald-400' : 'bg-slate-900/50 border-slate-800 text-slate-400 hover:border-slate-700'}
+                    `}
+                  >
+                    <Compass className="h-4 w-4" />
+                    <span>{text.mode_farmer}</span>
+                  </button>
+                  <button 
+                    onClick={() => setCurrentMode('disaster')}
+                    className={`flex items-center space-x-2.5 px-4 py-3 rounded-xl border text-xs font-bold transition text-left
+                      ${currentMode === 'disaster' ? 'bg-emerald-500/10 border-emerald-500 text-emerald-400' : 'bg-slate-900/50 border-slate-800 text-slate-400 hover:border-slate-700'}
+                    `}
+                  >
+                    <Shield className="h-4 w-4" />
+                    <span>{text.mode_disaster}</span>
+                  </button>
+                  <button 
+                    onClick={() => setCurrentMode('traveller')}
+                    className={`flex items-center space-x-2.5 px-4 py-3 rounded-xl border text-xs font-bold transition text-left
+                      ${currentMode === 'traveller' ? 'bg-emerald-500/10 border-emerald-500 text-emerald-400' : 'bg-slate-900/50 border-slate-800 text-slate-400 hover:border-slate-700'}
+                    `}
+                  >
+                    <Navigation className="h-4 w-4" />
+                    <span>{text.mode_traveller}</span>
+                  </button>
+                  <button 
+                    onClick={() => setCurrentMode('school')}
+                    className={`flex items-center space-x-2.5 px-4 py-3 rounded-xl border text-xs font-bold transition text-left
+                      ${currentMode === 'school' ? 'bg-emerald-500/10 border-emerald-500 text-emerald-400' : 'bg-slate-900/50 border-slate-800 text-slate-400 hover:border-slate-700'}
+                    `}
+                  >
+                    <GraduationCap className="h-4 w-4" />
+                    <span>{text.mode_school}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Simulated offline toggle */}
+              <div className="pt-6 border-t border-slate-800/60 space-y-3">
+                <label className="text-[10px] uppercase font-extrabold tracking-wider text-slate-400 block">Offline Resilience Simulator</label>
+                <label className="flex items-center space-x-3 cursor-pointer select-none">
+                  <input 
+                    type="checkbox" 
+                    checked={isOffline}
+                    onChange={(e) => setIsOffline(e.target.checked)}
+                    className="h-4.5 w-4.5 rounded border-slate-800 bg-slate-900 text-emerald-500 focus:ring-emerald-500"
+                  />
+                  <span className="text-xs text-slate-300 font-semibold">Simulate Offline Environment (Forces local cache lookups)</span>
+                </label>
+              </div>
+            </div>
+          )}
+
+        </div>
+
+        {/* PERSISTENT FLOATING CHAT DRAWER */}
+        <div className={`fixed bottom-6 right-6 z-50 flex flex-col transition-all duration-300 ease-in-out
+          ${chatOpen 
+            ? 'h-[500px] w-[350px] md:w-[400px] bg-slate-900 border border-slate-800 shadow-2xl rounded-2xl overflow-hidden' 
+            : 'h-14 w-14 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 shadow-lg cursor-pointer hover:scale-105 active:scale-95 flex items-center justify-center text-2xl shadow-emerald-500/20'
+          }
+        `}>
+          {chatOpen ? (
+            <div className="flex flex-col h-full w-full">
+              {/* Chat Header */}
+              <header className="flex h-12 items-center justify-between px-4 bg-slate-950 border-b border-slate-800/80">
+                <div className="flex items-center space-x-2">
+                  <span className="text-base">🤖</span>
+                  <span className="font-extrabold text-xs tracking-tight text-white">WeatherGPT Assistant</span>
+                </div>
+                <button 
+                  onClick={() => setChatOpen(false)}
+                  className="text-xs font-bold text-slate-400 hover:text-slate-200"
+                >
+                  Minimize
+                </button>
+              </header>
+
+              {/* Chat message space */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-950/40">
+                {chatMessages.map((msg) => (
+                  <div 
+                    key={msg.id}
+                    className={`flex flex-col max-w-[85%] rounded-2xl p-3 text-xs leading-relaxed font-medium
+                      ${msg.role === 'user' 
+                        ? 'self-end bg-emerald-500 text-white rounded-tr-none' 
+                        : 'self-start bg-slate-900 border border-slate-800 text-slate-200 rounded-tl-none'
+                      }
+                    `}
+                    style={{ alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start' }}
+                  >
+                    <p>{msg.content}</p>
+                    
+                    {/* Inline weather card in chat assistant responses */}
+                    {msg.metadata && msg.metadata.type === 'weather' && (
+                      <div className="mt-3 p-2.5 rounded-lg bg-slate-950/80 border border-slate-800/60 flex items-center justify-between text-[10px]">
+                        <div>
+                          <p className="font-bold text-white uppercase">{msg.metadata.weather_details.location}</p>
+                          <p className="text-slate-400 mt-0.5">{msg.metadata.weather_details.current.temp}°C — {msg.metadata.weather_details.current.condition}</p>
+                        </div>
+                        <span className={`px-1.5 py-0.5 rounded text-[8px] font-black text-white
+                          ${msg.metadata.risk_details.category === 'SEVERE' ? 'bg-red-500' : 'bg-orange-500'}
+                        `}>
+                          Risk: {msg.metadata.risk_details.score}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Inline route card in chat responses */}
+                    {msg.metadata && msg.metadata.type === 'route' && (
+                      <div className="mt-3 p-2.5 rounded-lg bg-slate-950/80 border border-slate-800/60 text-[10px] space-y-1">
+                        <p className="font-bold text-white uppercase">Route Analysis</p>
+                        <p className="text-slate-400">{msg.metadata.route_details.route_path}</p>
+                        <p className="text-rose-400 font-bold">Highest Risk: {msg.metadata.route_details.highest_risk_level}</p>
+                      </div>
+                    )}
+                  </div>
+                ))}
+
+                {isTyping && (
+                  <div className="self-start bg-slate-900 border border-slate-800 text-slate-400 rounded-2xl rounded-tl-none p-3 text-xs flex items-center space-x-1.5">
+                    <span className="h-1.5 w-1.5 rounded-full bg-slate-500 animate-bounce" style={{ animationDelay: '0ms' }} />
+                    <span className="h-1.5 w-1.5 rounded-full bg-slate-500 animate-bounce" style={{ animationDelay: '150ms' }} />
+                    <span className="h-1.5 w-1.5 rounded-full bg-slate-500 animate-bounce" style={{ animationDelay: '300ms' }} />
+                  </div>
+                )}
+                
+                <div ref={chatEndRef} />
+              </div>
+
+              {/* Chat suggestions shortcuts */}
+              <div className="p-2 border-t border-slate-800/60 bg-slate-950/60 flex space-x-2 overflow-x-auto whitespace-nowrap scrollbar-none">
+                <button 
+                  onClick={() => setChatInput("Will it rain tomorrow in Pune?")}
+                  className="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 text-[10px] font-bold text-slate-300 border border-slate-800/80 cursor-pointer"
+                >
+                  🌧️ Pune Rain?
+                </button>
+                <button 
+                  onClick={() => setChatInput("Is it safe to travel from Pune to Mumbai?")}
+                  className="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 text-[10px] font-bold text-slate-300 border border-slate-800/80 cursor-pointer"
+                >
+                  🚗 Pune ➔ Mumbai?
+                </button>
+                <button 
+                  onClick={() => setChatInput("Should I irrigate my crops today?")}
+                  className="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 text-[10px] font-bold text-slate-300 border border-slate-800/80 cursor-pointer"
+                >
+                  🌾 Irrigate Crops?
+                </button>
+              </div>
+
+              {/* Chat Input Controls */}
+              <div className="flex h-12 items-center bg-slate-950 border-t border-slate-800 px-2 space-x-1.5">
+                {speechSupported && (
+                  <button 
+                    onClick={startListening}
+                    className={`flex-none h-8 w-8 rounded-lg flex items-center justify-center transition
+                      ${isListening ? 'bg-red-500 text-white animate-pulse' : 'bg-slate-900 text-slate-400 hover:bg-slate-800 hover:text-slate-200'}
+                    `}
+                    title="Voice input"
+                  >
+                    <Mic className="h-4 w-4" />
+                  </button>
+                )}
+                
+                <button 
+                  onClick={() => setVoicePlayback(!voicePlayback)}
+                  className={`flex-none h-8 w-8 rounded-lg flex items-center justify-center transition
+                    ${voicePlayback ? 'bg-emerald-500 text-white' : 'bg-slate-900 text-slate-400 hover:bg-slate-800 hover:text-slate-200'}
+                  `}
+                  title="Toggle Voice Output Speak replies"
+                >
+                  <Volume2 className="h-4 w-4" />
+                </button>
+
+                <input 
+                  type="text"
+                  value={chatInput}
+                  onChange={(e) => setChatInput(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && sendChatMessage()}
+                  placeholder={text.placeholder_search}
+                  className="flex-1 min-w-0 bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-emerald-500"
+                />
+
+                <button 
+                  onClick={() => sendChatMessage()}
+                  className="flex-none h-8 w-8 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white flex items-center justify-center transition shadow shadow-emerald-500/10"
+                >
+                  <Send className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button 
+              onClick={() => setChatOpen(true)}
+              className="h-full w-full rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition"
+            >
+              💬
+            </button>
+          )}
+        </div>
+
+        {/* DISCLAIMER / FOOTER */}
+        <footer className="h-10 flex-none flex items-center justify-center border-t border-slate-900/60 bg-slate-950/80 px-6 text-[9px] text-slate-500 text-center select-none z-10">
+          <p className="max-w-4xl truncate">{text.disclaimer}</p>
+        </footer>
+
+      </main>
+
+    </div>
+  );
+}

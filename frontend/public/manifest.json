@@ -1,0 +1,28 @@
+{
+  "name": "WeatherGPT AI Meteorological Copilot",
+  "short_name": "WeatherGPT",
+  "description": "Conversational AI weather forecasting, alerts, and travel route intelligence command center.",
+  "theme_color": "#0f172a",
+  "background_color": "#0f172a",
+  "display": "standalone",
+  "orientation": "portrait",
+  "scope": "/",
+  "start_url": "/",
+  "icons": [
+    {
+      "src": "https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f326.png",
+      "sizes": "72x72",
+      "type": "image/png"
+    },
+    {
+      "src": "https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/128x128/1f326.png",
+      "sizes": "128x128",
+      "type": "image/png"
+    },
+    {
+      "src": "https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/512x512/1f326.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

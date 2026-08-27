@@ -1,0 +1,664 @@
+import json
+import requests
+from datetime import datetime, timedelta
+from typing import Dict, Any, List, Optional
+from sqlalchemy.orm import Session
+from app.config.settings import settings
+from app.models.models import WeatherCache, OfficialAlert
+
+# Coordinates for demo cities
+DEMO_COORDINATES = {
+    "pune": {"lat": 18.5204, "lon": 73.8567, "state": "Maharashtra"},
+    "mumbai": {"lat": 19.0760, "lon": 72.8777, "state": "Maharashtra"},
+    "delhi": {"lat": 28.7041, "lon": 77.1025, "state": "Delhi"},
+    "bengaluru": {"lat": 12.9716, "lon": 77.5946, "state": "Karnataka"},
+    "chennai": {"lat": 13.0827, "lon": 80.2707, "state": "Tamil Nadu"},
+    "hyderabad": {"lat": 17.3850, "lon": 78.4867, "state": "Telangana"},
+    "lonavala": {"lat": 18.7557, "lon": 73.4091, "state": "Maharashtra"},
+    "khopoli": {"lat": 18.7904, "lon": 73.3424, "state": "Maharashtra"},
+    "panvel": {"lat": 18.9894, "lon": 73.1175, "state": "Maharashtra"}
+}
+
+# High-fidelity mock weather data for DEMO MODE or fallback
+MOCK_WEATHER_DATA = {
+    "pune": {
+        "location": "Pune, Maharashtra",
+        "coordinates": {"lat": 18.5204, "lon": 73.8567},
+        "current": {
+            "temp": 27.0,
+            "feels_like": 29.5,
+            "condition": "Heavy Rain",
+            "icon": "cloud-lightning",
+            "humidity": 88,
+            "wind_speed": 18.0,
+            "wind_direction": "WSW",
+            "pressure": 1005,
+            "visibility": 4.0,
+            "uv_index": 2,
+            "rain_probability": 92,
+            "air_quality": "Good (AQI 38)",
+            "sunrise": "06:14 AM",
+            "sunset": "06:58 PM",
+            "source": "India Meteorological Department (IMD) - Demo Mode",
+            "updated_at": ""  # Set dynamically
+        },
+        "forecast": [
+            {
+                "day": "Today",
+                "temp": 27,
+                "condition": "Heavy Rain",
+                "icon": "cloud-rain",
+                "rain_probability": 92,
+                "wind": 18,
+                "humidity": 88,
+                "risk_level": "SEVERE",
+                "recommendation": "Severe rain expected. Minimize outdoor travel, avoid low-lying underpasses."
+            },
+            {
+                "day": "Tomorrow",
+                "temp": 26,
+                "condition": "Thunderstorms",
+                "icon": "cloud-lightning",
+                "rain_probability": 85,
+                "wind": 20,
+                "humidity": 90,
+                "risk_level": "HIGH",
+                "recommendation": "Thunderstorms and lightning predicted. Unplug sensitive electrical appliances."
+            },
+            {
+                "day": "Wednesday",
+                "temp": 28,
+                "condition": "Moderate Rain",
+                "icon": "cloud-drizzle",
+                "rain_probability": 75,
+                "wind": 14,
+                "humidity": 82,
+                "risk_level": "MODERATE",
+                "recommendation": "Light rain gear recommended. Commutes may be slower than usual."
+            },
+            {
+                "day": "Thursday",
+                "temp": 29,
+                "condition": "Light Rain",
+                "icon": "cloud-drizzle",
+                "rain_probability": 60,
+                "wind": 12,
+                "humidity": 78,
+                "risk_level": "MODERATE",
+                "recommendation": "Expect brief scattered showers. Good for farming if soil requires moisture."
+            },
+            {
+                "day": "Friday",
+                "temp": 30,
+                "condition": "Partly Cloudy",
+                "icon": "cloud",
+                "rain_probability": 30,
+                "wind": 10,
+                "humidity": 70,
+                "risk_level": "LOW",
+                "recommendation": "Pleasant conditions. Outdoor activities are safe to resume."
+            },
+            {
+                "day": "Saturday",
+                "temp": 31,
+                "condition": "Sunny",
+                "icon": "sun",
+                "rain_probability": 15,
+                "wind": 8,
+                "humidity": 65,
+                "risk_level": "LOW",
+                "recommendation": "Ideal sunny weather. Perfect time for outdoor harvesting or laundry."
+            },
+            {
+                "day": "Sunday",
+                "temp": 32,
+                "condition": "Sunny",
+                "icon": "sun",
+                "rain_probability": 10,
+                "wind": 8,
+                "humidity": 60,
+                "risk_level": "LOW",
+                "recommendation": "Warm weather. Keep hydrated when working outdoors."
+            }
+        ],
+        "alerts": [
+            {
+                "severity": "SEVERE",
+                "title": "Red Warning: Extreme Heavy Rainfall",
+                "description": "Active monsoon depression over western Maharashtra causing very heavy to extremely heavy rainfall over Pune district.",
+                "expected_period": "3 PM - 11 PM Today",
+                "impacts": ["Severe waterlogging on streets", "Localized flash floods", "Major traffic congestion on roads and highways", "Reduced visibility down to 500m"],
+                "actions": ["Avoid all non-essential travel", "Stay away from rivers, canals, and water channels", "Move to higher ground if living in vulnerable low-lying regions", "Keep emergency contacts active"]
+            }
+        ],
+        "climate": {
+            "historical_averages": [
+                {"month": "Jan", "temp": 20.5, "rainfall": 1.0},
+                {"month": "Feb", "temp": 22.8, "rainfall": 0.5},
+                {"month": "Mar", "temp": 26.9, "rainfall": 3.2},
+                {"month": "Apr", "temp": 30.1, "rainfall": 12.0},
+                {"month": "May", "temp": 31.5, "rainfall": 24.3},
+                {"month": "Jun", "temp": 28.2, "rainfall": 120.4},
+                {"month": "Jul", "temp": 25.8, "rainfall": 185.6},
+                {"month": "Aug", "temp": 25.1, "rainfall": 140.2},
+                {"month": "Sep", "temp": 26.0, "rainfall": 130.8},
+                {"month": "Oct", "temp": 25.9, "rainfall": 75.1},
+                {"month": "Nov", "temp": 22.4, "rainfall": 22.0},
+                {"month": "Dec", "temp": 20.1, "rainfall": 4.5}
+            ],
+            "insight": "Monsoon rainfall has shown a 12% increase over the past decade in Pune, with shorter but more intense precipitation spells."
+        }
+    },
+    "mumbai": {
+        "location": "Mumbai, Maharashtra",
+        "coordinates": {"lat": 19.0760, "lon": 72.8777},
+        "current": {
+            "temp": 29.0,
+            "feels_like": 34.0,
+            "condition": "Moderate Rain",
+            "icon": "cloud-rain",
+            "humidity": 82,
+            "wind_speed": 22.0,
+            "wind_direction": "SW",
+            "pressure": 1004,
+            "visibility": 6.0,
+            "uv_index": 4,
+            "rain_probability": 80,
+            "air_quality": "Good (AQI 29)",
+            "sunrise": "06:16 AM",
+            "sunset": "07:01 PM",
+            "source": "India Meteorological Department (IMD) - Demo Mode",
+            "updated_at": ""
+        },
+        "forecast": [
+            {"day": "Today", "temp": 29, "condition": "Moderate Rain", "icon": "cloud-rain", "rain_probability": 80, "wind": 22, "humidity": 82, "risk_level": "HIGH", "recommendation": "High tide at 4:30 PM. Stay away from beachfronts due to strong winds and high waves."},
+            {"day": "Tomorrow", "temp": 28, "condition": "Heavy Rain", "icon": "cloud-rain", "rain_probability": 90, "wind": 26, "humidity": 86, "risk_level": "SEVERE", "recommendation": "Extremely heavy rain predicted. High risk of local waterlogging in Sion, Kurla, and Hindmata."},
+            {"day": "Wednesday", "temp": 29, "condition": "Light Rain", "icon": "cloud-drizzle", "rain_probability": 65, "wind": 18, "humidity": 80, "risk_level": "MODERATE", "recommendation": "Light rain will persist. Local train services are expected to run normally."},
+            {"day": "Thursday", "temp": 30, "condition": "Partly Cloudy", "icon": "cloud", "rain_probability": 40, "wind": 15, "humidity": 75, "risk_level": "LOW", "recommendation": "Skies clearing up. Normal activities can be resumed."},
+            {"day": "Friday", "temp": 31, "condition": "Partly Cloudy", "icon": "cloud", "rain_probability": 30, "wind": 12, "humidity": 72, "risk_level": "LOW", "recommendation": "Pleasant and humid. Good weather for drying laundry outdoors."},
+            {"day": "Saturday", "temp": 31, "condition": "Sunny", "icon": "sun", "rain_probability": 20, "wind": 10, "humidity": 70, "risk_level": "LOW", "recommendation": "Sunny day. Use sunscreen and light cotton clothing."},
+            {"day": "Sunday", "temp": 32, "condition": "Sunny", "icon": "sun", "rain_probability": 10, "wind": 8, "humidity": 68, "risk_level": "LOW", "recommendation": "Hot day. Take hydration breaks regularly."}
+        ],
+        "alerts": [
+            {
+                "severity": "WARNING",
+                "title": "Orange Warning: High Tide & Moderate Rainfall",
+                "description": "High tide warning combined with forecast of moderate to heavy rainfall over Mumbai city and suburbs.",
+                "expected_period": "2 PM - 6 PM Today",
+                "impacts": ["Seawater ingress in low-lying coastal roads", "Slow traffic flow across major junctions", "Beach operations suspended"],
+                "actions": ["Do not venture near beaches or coastal promenades during high tide", "Plan commutes ahead to avoid flooded roads", "Follow official municipal warnings"]
+            }
+        ],
+        "climate": {
+            "historical_averages": [
+                {"month": "Jan", "temp": 24.5, "rainfall": 0.6},
+                {"month": "Feb", "temp": 25.8, "rainfall": 1.5},
+                {"month": "Mar", "temp": 28.2, "rainfall": 0.1},
+                {"month": "Apr", "temp": 30.5, "rainfall": 0.5},
+                {"month": "May", "temp": 32.2, "rainfall": 12.0},
+                {"month": "Jun", "temp": 29.5, "rainfall": 520.2},
+                {"month": "Jul", "temp": 27.5, "rainfall": 810.6},
+                {"month": "Aug", "temp": 27.0, "rainfall": 530.4},
+                {"month": "Sep", "temp": 27.8, "rainfall": 310.2},
+                {"month": "Oct", "temp": 29.2, "rainfall": 85.9},
+                {"month": "Nov", "temp": 27.9, "rainfall": 10.4},
+                {"month": "Dec", "temp": 25.6, "rainfall": 1.8}
+            ],
+            "insight": "Mumbai has observed a significant shift in monsoon peaks, with July rainfall increasing by 15% and extreme precipitation events becoming more frequent."
+        }
+    },
+    "lonavala": {
+        "location": "Lonavala, Maharashtra",
+        "coordinates": {"lat": 18.7557, "lon": 73.4091},
+        "current": {
+            "temp": 21.0,
+            "feels_like": 21.0,
+            "condition": "Extremely Heavy Rain",
+            "icon": "cloud-lightning",
+            "humidity": 98,
+            "wind_speed": 28.0,
+            "wind_direction": "SW",
+            "pressure": 1002,
+            "visibility": 1.5,
+            "uv_index": 1,
+            "rain_probability": 98,
+            "air_quality": "Good (AQI 15)",
+            "sunrise": "06:14 AM",
+            "sunset": "06:58 PM",
+            "source": "India Meteorological Department (IMD) - Demo Mode",
+            "updated_at": ""
+        },
+        "forecast": [
+            {"day": "Today", "temp": 21, "condition": "Extremely Heavy Rain", "icon": "cloud-lightning", "rain_probability": 98, "wind": 28, "humidity": 98, "risk_level": "SEVERE", "recommendation": "Landslide warnings active. Avoid ghat roads. Heavy fog reduces visibility below 1km."},
+            {"day": "Tomorrow", "temp": 20, "condition": "Heavy Rain", "icon": "cloud-rain", "rain_probability": 95, "wind": 25, "humidity": 96, "risk_level": "SEVERE", "recommendation": "Continuous precipitation will persist. Keep emergency lighting equipment ready."}
+        ],
+        "alerts": [
+            {
+                "severity": "SEVERE",
+                "title": "Red Alert: Landslide Risk & Cloudburst Danger",
+                "description": "Extremely heavy precipitation over the Western Ghats (Lonavala/Khandala). Severe risk of landslides and mudflows on the Pune-Mumbai Expressway.",
+                "expected_period": "Active all day",
+                "impacts": ["Landslips blocking roads", "Thick dense fog blocking visibility on ghats", "Waterfall zones extremely dangerous"],
+                "actions": ["Avoid travelling via ghat routes entirely", "Stay indoors away from hilly slopes", "Cooperates with local highway police instructions"]
+            }
+        ],
+        "climate": {
+            "historical_averages": [{"month": "Jul", "temp": 21.0, "rainfall": 1500.0}],
+            "insight": "High landslide vulnerability due to heavy saturation of soil during monsoon."
+        }
+    },
+    "khopoli": {
+        "location": "Khopoli, Maharashtra",
+        "coordinates": {"lat": 18.7904, "lon": 73.3424},
+        "current": {
+            "temp": 25.0,
+            "feels_like": 27.0,
+            "condition": "Heavy Rainfall",
+            "icon": "cloud-rain",
+            "humidity": 92,
+            "wind_speed": 22.0,
+            "wind_direction": "SW",
+            "pressure": 1004,
+            "visibility": 3.0,
+            "uv_index": 2,
+            "rain_probability": 90,
+            "air_quality": "Good (AQI 25)",
+            "sunrise": "06:15 AM",
+            "sunset": "06:59 PM",
+            "source": "India Meteorological Department (IMD) - Demo Mode",
+            "updated_at": ""
+        },
+        "forecast": [
+            {"day": "Today", "temp": 25, "condition": "Heavy Rainfall", "icon": "cloud-rain", "rain_probability": 90, "wind": 22, "humidity": 92, "risk_level": "HIGH", "recommendation": "Waterlogging reported in low lying industrial sectors. Drive cautiously."},
+            {"day": "Tomorrow", "temp": 24, "condition": "Moderate Rain", "icon": "cloud-drizzle", "rain_probability": 80, "wind": 18, "humidity": 90, "risk_level": "HIGH", "recommendation": "Moderate rain. Ensure drainage systems are clear."}
+        ],
+        "alerts": [
+            {
+                "severity": "WARNING",
+                "title": "Orange Alert: Excessive Runoff & River Rise",
+                "description": "Significant rain accumulation causing increased flow in local streams and rivers near Khopoli.",
+                "expected_period": "Ongoing",
+                "impacts": ["River water levels near danger marks", "Water logging in low lying bypass roads"],
+                "actions": ["Do not attempt to cross submerged bridges", "Keep assets in elevated positions"]
+            }
+        ],
+        "climate": {
+            "historical_averages": [{"month": "Jul", "temp": 24.5, "rainfall": 800.0}],
+            "insight": "Prone to rapid runoff from nearby hills during heavy downpours."
+        }
+    },
+    "panvel": {
+        "location": "Panvel, Maharashtra",
+        "coordinates": {"lat": 18.9894, "lon": 73.1175},
+        "current": {
+            "temp": 27.0,
+            "feels_like": 30.0,
+            "condition": "Moderate Rain",
+            "icon": "cloud-drizzle",
+            "humidity": 85,
+            "wind_speed": 16.0,
+            "wind_direction": "SW",
+            "pressure": 1006,
+            "visibility": 5.0,
+            "uv_index": 3,
+            "rain_probability": 75,
+            "air_quality": "Good (AQI 32)",
+            "sunrise": "06:16 AM",
+            "sunset": "07:00 PM",
+            "source": "India Meteorological Department (IMD) - Demo Mode",
+            "updated_at": ""
+        },
+        "forecast": [
+            {"day": "Today", "temp": 27, "condition": "Moderate Rain", "icon": "cloud-drizzle", "rain_probability": 75, "wind": 16, "humidity": 85, "risk_level": "WATCH", "recommendation": "Isolated heavy showers possible. Traffic congestion on highway merge points."}
+        ],
+        "alerts": [
+            {
+                "severity": "WATCH",
+                "title": "Yellow Alert: Active Rain Watch",
+                "description": "Monsoon activity active over Panvel region with light to moderate rainfall expected.",
+                "expected_period": "Next 24 hours",
+                "impacts": ["Minor waterlogging in low roads", "Occasional traffic slowdowns"],
+                "actions": ["Drive safely and avoid speeding on wet surfaces"]
+            }
+        ],
+        "climate": {
+            "historical_averages": [{"month": "Jul", "temp": 26.5, "rainfall": 600.0}],
+            "insight": "Rapidly growing urban area with potential storm-water drainage pressure."
+        }
+    }
+}
+
+# Add default profiles for other major cities
+MOCK_WEATHER_DATA["delhi"] = {
+    "location": "Delhi, NCR",
+    "coordinates": {"lat": 28.7041, "lon": 77.1025},
+    "current": {
+        "temp": 38.0,
+        "feels_like": 44.0,
+        "condition": "Severe Heatwave",
+        "icon": "sun",
+        "humidity": 30,
+        "wind_speed": 12.0,
+        "wind_direction": "WNW",
+        "pressure": 1000,
+        "visibility": 5.0,
+        "uv_index": 9,
+        "rain_probability": 5,
+        "air_quality": "Poor (AQI 280)",
+        "sunrise": "05:54 AM",
+        "sunset": "07:08 PM",
+        "source": "IMD Forecast System - Demo Mode",
+        "updated_at": ""
+    },
+    "forecast": [
+        {"day": "Today", "temp": 38, "condition": "Severe Heatwave", "icon": "sun", "rain_probability": 5, "wind": 12, "humidity": 30, "risk_level": "SEVERE", "recommendation": "Extreme temperatures. Stay indoors between 11 AM and 4 PM. Drink ORS/water constantly."},
+        {"day": "Tomorrow", "temp": 39, "condition": "Sunny and Dusty", "icon": "sun", "rain_probability": 10, "wind": 15, "humidity": 28, "risk_level": "SEVERE", "recommendation": "Dust storm risk. Wear protective masks to avoid respiratory discomfort."},
+        {"day": "Wednesday", "temp": 37, "condition": "Sunny", "icon": "sun", "rain_probability": 10, "wind": 10, "humidity": 32, "risk_level": "HIGH", "recommendation": "Prolonged exposure risk. Keep pets and children indoors."},
+        {"day": "Thursday", "temp": 36, "condition": "Partly Cloudy", "icon": "cloud", "rain_probability": 25, "wind": 14, "humidity": 45, "risk_level": "MODERATE", "recommendation": "Slight relief in heat, but humidity will rise. Avoid heavy outdoor physical workouts."}
+    ],
+    "alerts": [
+        {
+            "severity": "SEVERE",
+            "title": "Red Alert: Severe Heatwave Conditions",
+            "description": "Loo winds from Rajasthan bringing dry scorching air over Delhi-NCR. Temperatures hovering around 44-46°C in multiple pockets.",
+            "expected_period": "Next 48 Hours",
+            "impacts": ["High risk of heat stroke/exhaustion", "Power grid stress due to cooling demands", "Enhanced dust suspension in air"],
+            "actions": ["Avoid direct sunlight exposure", "Stay hydrated with water, buttermilk, or lemon water", "Wear loose, light-colored cotton clothes", "Ensure outdoor workers have regular shading and rest breaks"]
+        }
+    ],
+    "climate": {
+        "historical_averages": [{"month": "May", "temp": 39.5, "rainfall": 15.0}],
+        "insight": "Average summer peak temperatures have risen by 1.8°C over the last 15 years, with heatwaves starting earlier in the spring."
+    }
+}
+
+# Fallback datasets for others
+MOCK_WEATHER_DATA["bengaluru"] = {
+    "location": "Bengaluru, Karnataka",
+    "coordinates": {"lat": 12.9716, "lon": 77.5946},
+    "current": {
+        "temp": 24.0,
+        "feels_like": 24.0,
+        "condition": "Pleasant/Drizzle",
+        "icon": "cloud-drizzle",
+        "humidity": 72,
+        "wind_speed": 10.0,
+        "wind_direction": "E",
+        "pressure": 1012,
+        "visibility": 8.0,
+        "uv_index": 4,
+        "rain_probability": 30,
+        "air_quality": "Satisfactory (AQI 55)",
+        "sunrise": "06:05 AM",
+        "sunset": "06:42 PM",
+        "source": "IMD Bengaluru - Demo Mode",
+        "updated_at": ""
+    },
+    "forecast": [
+        {"day": "Today", "temp": 24, "condition": "Pleasant/Drizzle", "icon": "cloud-drizzle", "rain_probability": 30, "wind": 10, "humidity": 72, "risk_level": "LOW", "recommendation": "Great weather. Carry a light jacket or umbrella for sudden evening drizzles."}
+    ],
+    "alerts": [],
+    "climate": {
+        "historical_averages": [{"month": "Aug", "temp": 24.0, "rainfall": 120.0}],
+        "insight": "Bengaluru enjoys a highly stable moderate climate, though micro-climate variations are appearing due to rapid urbanization."
+    }
+}
+
+# Add default fallbacks for missing cities so we never crash
+DEFAULT_FALLBACK = {
+    "location": "Generic City",
+    "coordinates": {"lat": 20.0, "lon": 75.0},
+    "current": {
+        "temp": 26.0,
+        "feels_like": 28.0,
+        "condition": "Partly Cloudy",
+        "icon": "cloud",
+        "humidity": 65,
+        "wind_speed": 12.0,
+        "wind_direction": "N",
+        "pressure": 1010,
+        "visibility": 10.0,
+        "uv_index": 6,
+        "rain_probability": 20,
+        "air_quality": "Good (AQI 45)",
+        "sunrise": "06:00 AM",
+        "sunset": "06:30 PM",
+        "source": "Global Met Service - Fallback Data",
+        "updated_at": ""
+    },
+    "forecast": [
+        {"day": "Today", "temp": 26, "condition": "Partly Cloudy", "icon": "cloud", "rain_probability": 20, "wind": 12, "humidity": 65, "risk_level": "LOW", "recommendation": "Enjoy the moderate day."}
+    ],
+    "alerts": [],
+    "climate": {
+        "historical_averages": [{"month": "Aug", "temp": 26.0, "rainfall": 100.0}],
+        "insight": "Normal climate conditions."
+    }
+}
+
+
+def normalize_city_name(city: str) -> str:
+    """Cleans up and matches city name to keys."""
+    cleaned = city.strip().lower()
+    if "pune" in cleaned:
+        return "pune"
+    elif "mumbai" in cleaned:
+        return "mumbai"
+    elif "delhi" in cleaned:
+        return "delhi"
+    elif "bengaluru" in cleaned or "bangalore" in cleaned:
+        return "bengaluru"
+    elif "chennai" in cleaned or "madras" in cleaned:
+        return "chennai"
+    elif "hyderabad" in cleaned:
+        return "hyderabad"
+    elif "lonavala" in cleaned or "lonavla" in cleaned:
+        return "lonavala"
+    elif "khopoli" in cleaned:
+        return "khopoli"
+    elif "panvel" in cleaned:
+        return "panvel"
+    return cleaned
+
+
+def fetch_weather_from_api(city: str, api_key: str) -> Dict[str, Any]:
+    """Fetches real-time weather from OpenWeatherMap API."""
+    try:
+        # Step 1: Geocoding
+        geo_url = f"https://api.openweathermap.org/geo/1.0/direct?q={city}&limit=1&appid={api_key}"
+        geo_res = requests.get(geo_url, timeout=5)
+        geo_data = geo_res.json()
+        
+        if not geo_data:
+            raise ValueError(f"Location '{city}' not found.")
+            
+        lat = geo_data[0]["lat"]
+        lon = geo_data[0]["lon"]
+        display_name = f"{geo_data[0]['name']}, {geo_data[0].get('state', '')} {geo_data[0].get('country', '')}".strip()
+        
+        # Step 2: Fetch current weather
+        weather_url = f"https://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={api_key}&units=metric"
+        weather_res = requests.get(weather_url, timeout=5)
+        w_data = weather_res.json()
+        
+        # Step 3: Fetch forecast (5 day/3 hour)
+        forecast_url = f"https://api.openweathermap.org/data/2.5/forecast?lat={lat}&lon={lon}&appid={api_key}&units=metric"
+        forecast_res = requests.get(forecast_url, timeout=5)
+        f_data = forecast_res.json()
+        
+        # Parse weather condition icon
+        w_cond = w_data["weather"][0]["main"]
+        icon_map = {
+            "Clear": "sun",
+            "Clouds": "cloud",
+            "Rain": "cloud-rain",
+            "Drizzle": "cloud-drizzle",
+            "Thunderstorm": "cloud-lightning",
+            "Snow": "snowflake",
+            "Mist": "cloud",
+            "Smoke": "cloud",
+            "Haze": "cloud",
+            "Dust": "cloud",
+            "Fog": "cloud",
+            "Sand": "cloud",
+            "Ash": "cloud",
+            "Squall": "wind",
+            "Tornado": "wind"
+        }
+        icon = icon_map.get(w_cond, "cloud")
+        
+        # Parse Current Weather
+        current_parsed = {
+            "temp": round(w_data["main"]["temp"], 1),
+            "feels_like": round(w_data["main"]["feels_like"], 1),
+            "condition": w_data["weather"][0]["description"].title(),
+            "icon": icon,
+            "humidity": w_data["main"]["humidity"],
+            "wind_speed": round(w_data["wind"]["speed"] * 3.6, 1),  # convert m/s to km/h
+            "wind_direction": get_wind_direction(w_data["wind"].get("deg", 0)),
+            "pressure": w_data["main"]["pressure"],
+            "visibility": round(w_data.get("visibility", 10000) / 1000, 1),  # convert meters to km
+            "uv_index": 5,  # OpenWeatherMap current API doesn't include UV index directly in free tier without One Call
+            "rain_probability": f_data["list"][0].get("pop", 0) * 100 if f_data.get("list") else 0,
+            "air_quality": "Satisfactory (AQI 52)",
+            "sunrise": datetime.fromtimestamp(w_data["sys"]["sunrise"]).strftime("%I:%M %p"),
+            "sunset": datetime.fromtimestamp(w_data["sys"]["sunset"]).strftime("%I:%M %p"),
+            "source": "OpenWeatherMap API",
+            "updated_at": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+        }
+        
+        # Parse Forecast (Group 3-hourly list to daily)
+        forecast_list = []
+        days_seen = set()
+        
+        for item in f_data.get("list", []):
+            dt_txt = item["dt_txt"]
+            dt_obj = datetime.strptime(dt_txt, "%Y-%m-%d %H:%M:%S")
+            day_name = dt_obj.strftime("%A")
+            
+            # Select midday forecast (12:00:00) or first seen if not already added today
+            if day_name not in days_seen or dt_obj.hour == 12:
+                # Calculate risk level dynamically
+                rain_prob = item.get("pop", 0) * 100
+                temp_val = item["main"]["temp"]
+                wind_spd = item["wind"]["speed"] * 3.6
+                
+                risk_lvl = "LOW"
+                if rain_prob > 80 or temp_val > 40:
+                    risk_lvl = "SEVERE"
+                elif rain_prob > 60 or temp_val > 35 or wind_spd > 25:
+                    risk_lvl = "HIGH"
+                elif rain_prob > 30 or wind_spd > 15:
+                    risk_lvl = "MODERATE"
+                
+                # Determine recommendations
+                recs = "Safe outdoor conditions."
+                if risk_lvl == "SEVERE":
+                    recs = "Severe conditions expected. Avoid outdoors."
+                elif risk_lvl == "HIGH":
+                    recs = "High risk parameters. Stay updated with alerts."
+                elif risk_lvl == "MODERATE":
+                    recs = "Wear light protective clothing. Rain likely."
+                
+                f_item = {
+                    "day": day_name,
+                    "temp": round(temp_val),
+                    "condition": item["weather"][0]["main"],
+                    "icon": icon_map.get(item["weather"][0]["main"], "cloud"),
+                    "rain_probability": round(rain_prob),
+                    "wind": round(wind_spd),
+                    "humidity": item["main"]["humidity"],
+                    "risk_level": risk_lvl,
+                    "recommendation": recs
+                }
+                
+                # If midday, override previous day's entry or add
+                if day_name in days_seen:
+                    # Update existing day entry in the list
+                    for idx, existing in enumerate(forecast_list):
+                        if existing["day"] == day_name:
+                            forecast_list[idx] = f_item
+                            break
+                else:
+                    forecast_list.append(f_item)
+                    days_seen.add(day_name)
+                    
+            if len(forecast_list) >= 7:
+                break
+                
+        return {
+            "location": display_name,
+            "coordinates": {"lat": lat, "lon": lon},
+            "current": current_parsed,
+            "forecast": forecast_list,
+            "alerts": [],  # Filled separately or via mock alert service
+            "climate": {
+                "historical_averages": [
+                    {"month": "Jan", "temp": current_parsed["temp"] - 5, "rainfall": 10},
+                    {"month": "Jul", "temp": current_parsed["temp"] - 2, "rainfall": 300},
+                ],
+                "insight": "Historical data is generated dynamically based on active coordinate location."
+            }
+        }
+    except Exception as e:
+        print(f"Error fetching from API: {e}")
+        raise e
+
+
+def get_wind_direction(deg: int) -> str:
+    val = int((deg / 22.5) + 0.5)
+    arr = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"]
+    return arr[(val % 16)]
+
+
+def get_weather(db: Session, location: str) -> Dict[str, Any]:
+    """Retrieves weather, prioritizing Demo Mode, then Database Cache, then External API."""
+    norm_city = normalize_city_name(location)
+    
+    # 1. Check Demo Mode priority or if city is a demo city in demo mode
+    if settings.DEMO_MODE and norm_city in MOCK_WEATHER_DATA:
+        data = dict(MOCK_WEATHER_DATA[norm_city])
+        # Update timestamp to match current system time
+        cur_time = datetime.now().strftime("%I:%M %p")
+        data["current"]["updated_at"] = f"Today, {cur_time}"
+        return data
+        
+    # 2. Check Database Cache
+    cache_entry = db.query(WeatherCache).filter(WeatherCache.location == norm_city).first()
+    if cache_entry:
+        # Cache duration: 5 minutes
+        age = datetime.utcnow() - cache_entry.updated_at
+        if age < timedelta(minutes=5):
+            parsed = json.loads(cache_entry.data)
+            # Check if this was a cached OWM response, update timestamp
+            parsed["current"]["updated_at"] = f"Cached, {(age.seconds // 60)}m ago"
+            return parsed
+
+    # 3. Fetch from API if key is present and we're not strict-demo or it is a search query
+    if settings.OPENWEATHER_API_KEY:
+        try:
+            api_data = fetch_weather_from_api(location, settings.OPENWEATHER_API_KEY)
+            
+            # Save or update cache
+            if cache_entry:
+                cache_entry.data = json.dumps(api_data)
+                cache_entry.updated_at = datetime.utcnow()
+            else:
+                new_cache = WeatherCache(location=norm_city, data=json.dumps(api_data))
+                db.add(new_cache)
+            db.commit()
+            return api_data
+        except Exception:
+            # If API fails, fallback to cached data regardless of age
+            if cache_entry:
+                parsed = json.loads(cache_entry.data)
+                parsed["current"]["updated_at"] = f"Offline Fallback (Last updated: {cache_entry.updated_at.strftime('%Y-%m-%d %H:%M:%S')})"
+                return parsed
+                
+    # 4. Fallback to mock data if it matches any known key, otherwise generic default
+    default_key = norm_city if norm_city in MOCK_WEATHER_DATA else "pune"
+    fallback_data = dict(MOCK_WEATHER_DATA[default_key])
+    fallback_data["location"] = f"{location.title()} (Demo Fallback)"
+    cur_time = datetime.now().strftime("%I:%M %p")
+    fallback_data["current"]["updated_at"] = f"Demo Mode Fallback, {cur_time}"
+    return fallback_data
