@@ -1,6 +1,6 @@
 import json
 import os
-import google.generativeai as genai
+from google import genai
 from typing import Dict, Any, List, Optional
 from sqlalchemy.orm import Session
 from app.config.settings import settings
@@ -8,12 +8,13 @@ from app.services.weather_service import get_weather, normalize_city_name
 from app.services.risk_service import calculate_weather_risk
 from app.services.route_service import analyze_route_weather
 
-# Try to initialize Gemini API
+# Try to initialize Gemini client
+client = None
 GEMINI_AVAILABLE = False
 api_key = settings.GEMINI_API_KEY or os.environ.get("GEMINI_API_KEY")
 if api_key:
     try:
-        genai.configure(api_key=api_key)
+        client = genai.Client(api_key=api_key)
         GEMINI_AVAILABLE = True
     except Exception as e:
         print(f"Error configuring Gemini: {e}")
@@ -261,8 +262,10 @@ Return a response.
 """
     
     try:
-        model = genai.GenerativeModel("gemini-1.5-flash")
-        response = model.generate_content(prompt)
+        response = client.models.generate_content(
+            model="gemini-1.5-flash",
+            contents=prompt,
+        )
         answer_text = response.text.strip()
         
         return {
