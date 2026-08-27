@@ -11,9 +11,7 @@ services:
       - key: DEMO_MODE
         value: "True"
       - key: DATABASE_URL
-        fromDatabase:
-          name: weathergpt-db
-          property: connectionString
+        value: sqlite:///./weathergpt.db
       - key: GEMINI_API_KEY
         sync: false # Set in Render Dashboard
       - key: OPENWEATHER_API_KEY
@@ -30,7 +28,3 @@ services:
         value: 3000
       - key: NEXT_PUBLIC_API_URL
         value: https://weathergpt-backend.onrender.com # Replace with your backend's actual Render URL if service name differs
-
-databases:
-  - name: weathergpt-db
-    plan: free # Render's free PostgreSQL tier (expires after 90 days, upgrade for production)
