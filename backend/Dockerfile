@@ -11,12 +11,12 @@ ENV DEMO_MODE=True
 WORKDIR /app
 
 # Install dependencies
-COPY backend/requirements.txt .
+COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy project files
-COPY backend/app/ app/
-COPY backend/weathergpt.db .
+COPY app/ app/
+COPY weathergpt.db .
 
 # Expose port
 EXPOSE 8000

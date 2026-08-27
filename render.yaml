@@ -4,7 +4,7 @@ services:
     name: weathergpt-backend
     runtime: docker
     dockerfilePath: backend/Dockerfile
-    dockerContext: .
+    dockerContext: backend
     envVars:
       - key: PORT
         value: 8000
