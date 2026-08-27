@@ -3,7 +3,7 @@ services:
   - type: web
     name: weathergpt-backend
     runtime: docker
-    dockerFilePath: backend/Dockerfile
+    dockerfilePath: backend/Dockerfile
     dockerContext: .
     envVars:
       - key: PORT
@@ -23,7 +23,7 @@ services:
   - type: web
     name: weathergpt-frontend
     runtime: docker
-    dockerFilePath: frontend/Dockerfile
+    dockerfilePath: frontend/Dockerfile
     dockerContext: frontend
     envVars:
       - key: PORT
