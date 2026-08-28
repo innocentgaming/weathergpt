@@ -4,7 +4,7 @@ import os
 
 class Settings(BaseSettings):
     PORT: int = 8000
-    DEMO_MODE: bool = True
+    DEMO_MODE: bool = False
     DATABASE_URL: str = "sqlite:///./weathergpt.db"
     GEMINI_API_KEY: Optional[str] = None
     OPENWEATHER_API_KEY: Optional[str] = None

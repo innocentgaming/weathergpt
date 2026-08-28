@@ -22,7 +22,7 @@ def test_current_weather():
     data = response.json()
     assert "weather" in data
     assert "risk" in data
-    assert data["weather"]["location"] == "Pune, Maharashtra"
+    assert "Pune" in data["weather"]["location"]
     assert data["risk"]["score"] > 0
     assert "breakdown" in data["risk"]
 
