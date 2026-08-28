@@ -2,7 +2,7 @@ import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.database import Base, engine
-from app.routes import weather, chat, route, alerts, disaster
+from app.routes import weather, chat, route, alerts, disaster, emergency, simulation, climate, location, report
 from app.config.settings import settings
 
 # Create database tables automatically
@@ -29,6 +29,11 @@ app.include_router(chat.router, prefix="/api")
 app.include_router(route.router, prefix="/api")
 app.include_router(alerts.router, prefix="/api")
 app.include_router(disaster.router, prefix="/api")
+app.include_router(emergency.router, prefix="/api")
+app.include_router(simulation.router, prefix="/api")
+app.include_router(climate.router, prefix="/api")
+app.include_router(location.router, prefix="/api")
+app.include_router(report.router, prefix="/api")
 
 @app.get("/")
 def read_root():

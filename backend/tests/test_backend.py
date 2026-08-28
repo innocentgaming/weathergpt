@@ -83,6 +83,41 @@ def test_disaster():
     assert "critical_zones" in data
     assert "ai_situation_summary" in data
 
+def test_emergency():
+    response = client.get("/api/emergency/locations?city=Pune")
+    assert response.status_code == 200
+    data = response.json()
+    assert "locations" in data
+    assert len(data["locations"]) > 0
+
+    chk = client.get("/api/emergency/checklist?hazard=flood")
+    assert chk.status_code == 200
+    assert "before" in chk.json()
+
+def test_simulation():
+    res = client.post("/api/simulation/disaster", json={"scenario": "HEAVY_RAIN", "intensity": 1.2})
+    assert res.status_code == 200
+    assert "result" in res.json()
+
+    whatif = client.post("/api/simulation/whatif", json={"location": "Pune", "rainfall_delta_percent": 30})
+    assert whatif.status_code == 200
+    assert "simulated_score" in whatif.json()
+
+def test_climate():
+    res = client.get("/api/climate/insights?location=Pune")
+    assert res.status_code == 200
+    assert "monthly_averages" in res.json()
+
+def test_location():
+    res = client.get("/api/location/search?q=Pune")
+    assert res.status_code == 200
+    assert "resolved" in res.json()
+
+def test_report():
+    res = client.post("/api/report/generate", json={"location": "Pune", "report_type": "daily"})
+    assert res.status_code == 200
+    assert "executive_summary" in res.json()
+
 if __name__ == "__main__":
     print("Running WeatherGPT Backend Integration Tests...")
     try:
@@ -100,6 +135,16 @@ if __name__ == "__main__":
         print("[OK] Official alerts working")
         test_disaster()
         print("[OK] Disaster Command Center metrics working")
+        test_emergency()
+        print("[OK] Emergency Safe Location Finder working")
+        test_simulation()
+        print("[OK] Disaster & What-If Simulation working")
+        test_climate()
+        print("[OK] Climate Insights & Trends working")
+        test_location()
+        print("[OK] Natural Language Location Search working")
+        test_report()
+        print("[OK] Weather Intelligence Report Generator working")
         print("\nAll backend integration tests PASSED successfully!")
     except AssertionError as e:
         print(f"Assertion failed: {e}")

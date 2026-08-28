@@ -6,8 +6,15 @@ import {
   CloudRain, Sun, Cloud, CloudLightning, Wind, Compass, 
   Navigation, AlertTriangle, Shield, 
   Map as MapIcon, Send, Mic, Volume2, Heart, Settings as SettingsIcon,
-  ChevronRight, RefreshCw, Layers, CheckCircle2, User, Activity, GraduationCap
+  ChevronRight, RefreshCw, Layers, CheckCircle2, User, Activity, GraduationCap,
+  Sliders, PhoneCall, TrendingUp, FileText
 } from 'lucide-react';
+
+import HackathonPresentationBar from './components/HackathonPresentationBar';
+import DisasterSimulationModal from './components/DisasterSimulationModal';
+import EmergencyCenterModal from './components/EmergencyCenterModal';
+import ClimateInsightsModal from './components/ClimateInsightsModal';
+import ReportGeneratorModal from './components/ReportGeneratorModal';
 
 // TypeScript Interfaces for WeatherGPT data structures
 export interface WeatherCurrent {
@@ -312,6 +319,14 @@ export default function WeatherGPT() {
   const [speechSupported, setSpeechSupported] = useState<boolean>(false);
   const [voicePlayback, setVoicePlayback] = useState<boolean>(false);
 
+  // Hackathon Presentation & Modals States
+  const [hackathonBarOpen, setHackathonBarOpen] = useState<boolean>(true);
+  const [currentHackathonStep, setCurrentHackathonStep] = useState<number>(1);
+  const [simModalOpen, setSimModalOpen] = useState<boolean>(false);
+  const [emergencyModalOpen, setEmergencyModalOpen] = useState<boolean>(false);
+  const [climateModalOpen, setClimateModalOpen] = useState<boolean>(false);
+  const [reportModalOpen, setReportModalOpen] = useState<boolean>(false);
+
   const chatEndRef = useRef<HTMLDivElement>(null);
   const text = LOCALIZATION[currentLang];
 
@@ -556,6 +571,38 @@ export default function WeatherGPT() {
     }
   };
 
+  // Hackathon Presentation 9-Step Story Flow Handler
+  const handleSelectHackathonStep = (stepId: number) => {
+    setCurrentHackathonStep(stepId);
+    if (stepId === 1) {
+      setActiveTab('dashboard');
+      fetchWeatherData('Pune');
+    } else if (stepId === 2) {
+      setActiveTab('dashboard');
+      setChatOpen(true);
+      setChatInput('Will it rain tomorrow in Pune?');
+    } else if (stepId === 3) {
+      setActiveTab('route');
+      setRouteFrom('Pune');
+      setRouteTo('Mumbai');
+      runRouteAnalysis();
+    } else if (stepId === 4) {
+      setActiveTab('map');
+    } else if (stepId === 5) {
+      setActiveTab('dashboard');
+    } else if (stepId === 6) {
+      setCurrentLang('mr');
+      setChatOpen(true);
+      setChatInput('उद्या पुण्यात पाऊस पडणार आहे का?');
+    } else if (stepId === 7) {
+      setIsOffline(true);
+    } else if (stepId === 8) {
+      setSimModalOpen(true);
+    } else if (stepId === 9) {
+      setActiveTab('disaster');
+    }
+  };
+
   // Icons Helper
   const getWeatherIcon = (iconName: string) => {
     switch (iconName) {
@@ -569,10 +616,16 @@ export default function WeatherGPT() {
   };
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-slate-950 text-slate-100 font-sans">
-      
-      {/* SIDEBAR NAVIGATION - Premium Dark Glassmorphism */}
-      <aside className="hidden md:flex flex-col w-64 bg-slate-900/40 backdrop-blur-lg border-r border-slate-800/80 p-6 space-y-8 select-none z-10">
+    <div className="flex flex-col h-screen w-screen overflow-hidden bg-slate-950 text-slate-100 font-sans">
+      <HackathonPresentationBar
+        currentStep={currentHackathonStep}
+        onSelectStep={handleSelectHackathonStep}
+        isOpen={hackathonBarOpen}
+        onToggleOpen={() => setHackathonBarOpen(!hackathonBarOpen)}
+      />
+      <div className="flex flex-1 overflow-hidden relative">
+        {/* SIDEBAR NAVIGATION - Premium Dark Glassmorphism */}
+        <aside className="hidden md:flex flex-col w-64 bg-slate-900/40 backdrop-blur-lg border-r border-slate-800/80 p-6 space-y-8 select-none z-10">
         <div className="flex items-center space-x-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 shadow-lg shadow-emerald-500/20 text-white font-bold text-lg">
             ⛈️
@@ -645,6 +698,41 @@ export default function WeatherGPT() {
             <SettingsIcon className="h-5 w-5" />
             <span>{text.nav_settings}</span>
           </button>
+
+          <div className="pt-4 space-y-1.5 border-t border-slate-800/60">
+            <span className="px-4 text-[10px] uppercase font-bold tracking-wider text-slate-500">Hackathon Tools</span>
+            <button
+              onClick={() => setSimModalOpen(true)}
+              className="flex w-full items-center space-x-3 px-4 py-2.5 rounded-xl text-xs font-semibold text-rose-400 hover:bg-rose-500/10 transition"
+            >
+              <Sliders className="h-4 w-4 text-rose-400" />
+              <span>Disaster Simulator</span>
+            </button>
+
+            <button
+              onClick={() => setEmergencyModalOpen(true)}
+              className="flex w-full items-center space-x-3 px-4 py-2.5 rounded-xl text-xs font-semibold text-red-400 hover:bg-red-500/10 transition"
+            >
+              <PhoneCall className="h-4 w-4 text-red-400" />
+              <span>Emergency Center</span>
+            </button>
+
+            <button
+              onClick={() => setClimateModalOpen(true)}
+              className="flex w-full items-center space-x-3 px-4 py-2.5 rounded-xl text-xs font-semibold text-cyan-400 hover:bg-cyan-500/10 transition"
+            >
+              <TrendingUp className="h-4 w-4 text-cyan-400" />
+              <span>Climate Insights</span>
+            </button>
+
+            <button
+              onClick={() => setReportModalOpen(true)}
+              className="flex w-full items-center space-x-3 px-4 py-2.5 rounded-xl text-xs font-semibold text-emerald-400 hover:bg-emerald-500/10 transition"
+            >
+              <FileText className="h-4 w-4 text-emerald-400" />
+              <span>Export Report</span>
+            </button>
+          </div>
         </nav>
 
         {/* User Info / Attribution */}
@@ -1507,6 +1595,28 @@ export default function WeatherGPT() {
 
       </main>
 
+      </div>
+
+      {/* MODALS */}
+      <DisasterSimulationModal
+        isOpen={simModalOpen}
+        onClose={() => setSimModalOpen(false)}
+        onApplyScenario={() => fetchWeatherData('Pune')}
+      />
+      <EmergencyCenterModal
+        isOpen={emergencyModalOpen}
+        onClose={() => setEmergencyModalOpen(false)}
+      />
+      <ClimateInsightsModal
+        isOpen={climateModalOpen}
+        onClose={() => setClimateModalOpen(false)}
+        location={weather?.location || 'Pune'}
+      />
+      <ReportGeneratorModal
+        isOpen={reportModalOpen}
+        onClose={() => setReportModalOpen(false)}
+        location={weather?.location || 'Pune'}
+      />
     </div>
   );
 }
