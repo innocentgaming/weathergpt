@@ -387,6 +387,29 @@ export default function WeatherGPT() {
     }
   }, [isOffline]);
 
+  const handleUseCurrentLocation = () => {
+    if (typeof window !== 'undefined' && navigator.geolocation) {
+      setIsRefreshing(true);
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const lat = position.coords.latitude;
+          const lon = position.coords.longitude;
+          const coordStr = `${lat.toFixed(4)},${lon.toFixed(4)}`;
+          setSearchLocation(coordStr);
+          fetchWeatherData(coordStr);
+        },
+        (err) => {
+          console.error("Geolocation error:", err);
+          setIsRefreshing(false);
+          alert("Unable to acquire GPS coordinates. Please check browser location permissions.");
+        },
+        { timeout: 10000, enableHighAccuracy: true }
+      );
+    } else {
+      alert("Geolocation is not supported by your browser.");
+    }
+  };
+
   const fetchDisasterMetrics = useCallback(async () => {
     try {
       const res = await fetch(`${BACKEND_URL}/api/disaster/dashboard`);
@@ -712,23 +735,38 @@ export default function WeatherGPT() {
               <span className="font-extrabold text-slate-100">{text.app_title}</span>
             </div>
             
-            {/* Location Autocomplete Selector */}
-            <div className="relative hidden md:block">
-              <select 
-                value={searchLocation}
-                onChange={(e) => setSearchLocation(e.target.value)}
-                className="w-48 bg-slate-900/80 border border-slate-800 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-200 focus:outline-none focus:border-emerald-500 cursor-pointer shadow-inner"
+            {/* Location Autocomplete Selector & GPS Button */}
+            <div className="flex items-center space-x-2">
+              <div className="relative hidden md:block">
+                <select 
+                  value={searchLocation}
+                  onChange={(e) => setSearchLocation(e.target.value)}
+                  className="w-48 bg-slate-900/80 border border-slate-800 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-200 focus:outline-none focus:border-emerald-500 cursor-pointer shadow-inner"
+                >
+                  {searchLocation.includes(",") && (
+                    <option value={searchLocation}>📍 Current GPS Location</option>
+                  )}
+                  <option value="Pune">Pune, MH</option>
+                  <option value="Mumbai">Mumbai, MH</option>
+                  <option value="Lonavala">Lonavala (Ghats)</option>
+                  <option value="Khopoli">Khopoli, MH</option>
+                  <option value="Panvel">Panvel, MH</option>
+                  <option value="Delhi">Delhi, NCR</option>
+                  <option value="Bengaluru">Bengaluru, KA</option>
+                  <option value="Chennai">Chennai, TN</option>
+                  <option value="Hyderabad">Hyderabad, TS</option>
+                </select>
+              </div>
+
+              {/* GPS Geolocation Trigger */}
+              <button
+                onClick={handleUseCurrentLocation}
+                title="Fetch Weather for Current GPS Location"
+                className="flex items-center space-x-1.5 px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-xl text-xs font-bold transition shadow-sm cursor-pointer"
               >
-                <option value="Pune">Pune, MH</option>
-                <option value="Mumbai">Mumbai, MH</option>
-                <option value="Lonavala">Lonavala (Ghats)</option>
-                <option value="Khopoli">Khopoli, MH</option>
-                <option value="Panvel">Panvel, MH</option>
-                <option value="Delhi">Delhi, NCR</option>
-                <option value="Bengaluru">Bengaluru, KA</option>
-                <option value="Chennai">Chennai, TN</option>
-                <option value="Hyderabad">Hyderabad, TS</option>
-              </select>
+                <Compass className="h-3.5 w-3.5 animate-spin-slow" />
+                <span className="hidden sm:inline">GPS Location</span>
+              </button>
             </div>
           </div>
 

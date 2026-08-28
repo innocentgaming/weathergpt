@@ -606,23 +606,50 @@ def fetch_weather_from_api(city: str, api_key: str) -> Dict[str, Any]:
 
 
 def fetch_weather_from_open_meteo(city: str) -> Dict[str, Any]:
-    """Fetches real-time live weather from Open-Meteo API (Free, Keyless)."""
+    """Fetches real-time live weather from Open-Meteo API (Free, Keyless). Supports city names and lat,lon coordinates."""
     try:
-        # Step 1: Geocoding
-        geo_url = f"https://geocoding-api.open-meteo.com/v1/search?name={city}&count=1"
-        geo_res = requests.get(geo_url, timeout=5)
-        geo_data = geo_res.json()
-        
-        if not geo_data or "results" not in geo_data or not geo_data["results"]:
-            raise ValueError(f"Location '{city}' not found.")
+        lat, lon = None, None
+        display_name = city
+
+        # Check if city string is GPS coordinates e.g. "18.5204,73.8567"
+        if "," in city and any(char.isdigit() for char in city):
+            try:
+                parts = city.split(",")
+                lat = float(parts[0].strip())
+                lon = float(parts[1].strip())
+                
+                # Perform reverse geocoding for human readable place name
+                try:
+                    rev_res = requests.get(f"https://api.bigdatacloud.net/data/reverse-geocode-client?latitude={lat}&longitude={lon}&localityLanguage=en", timeout=3)
+                    if rev_res.ok:
+                        rdata = rev_res.json()
+                        loc_name = rdata.get("locality") or rdata.get("city") or "Current Location"
+                        sub_div = rdata.get("principalSubdivision", "")
+                        c_name = rdata.get("countryName", "")
+                        display_name = f"📍 {loc_name}, {sub_div} {c_name}".strip()
+                    else:
+                        display_name = f"📍 Current Location ({lat:.2f}°N, {lon:.2f}°E)"
+                except Exception:
+                    display_name = f"📍 Current Location ({lat:.2f}°N, {lon:.2f}°E)"
+            except ValueError:
+                lat, lon = None, None
+
+        # If not coordinates, use forward Geocoding search
+        if lat is None or lon is None:
+            geo_url = f"https://geocoding-api.open-meteo.com/v1/search?name={city}&count=1"
+            geo_res = requests.get(geo_url, timeout=5)
+            geo_data = geo_res.json()
             
-        res_loc = geo_data["results"][0]
-        lat = res_loc["latitude"]
-        lon = res_loc["longitude"]
-        city_name = res_loc.get("name", city)
-        state_name = res_loc.get("admin1", "")
-        country_name = res_loc.get("country", "")
-        display_name = f"{city_name}, {state_name} {country_name}".strip()
+            if not geo_data or "results" not in geo_data or not geo_data["results"]:
+                raise ValueError(f"Location '{city}' not found.")
+                
+            res_loc = geo_data["results"][0]
+            lat = res_loc["latitude"]
+            lon = res_loc["longitude"]
+            city_name = res_loc.get("name", city)
+            state_name = res_loc.get("admin1", "")
+            country_name = res_loc.get("country", "")
+            display_name = f"{city_name}, {state_name} {country_name}".strip()
         
         # Step 2: Fetch Live Forecast & Current Weather
         weather_url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,surface_pressure,wind_speed_10m,wind_direction_10m&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,wind_speed_10m_max&timezone=auto"
