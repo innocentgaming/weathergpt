@@ -3,17 +3,18 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { 
-  CloudRain, Sun, Cloud, CloudLightning, Wind, Compass, 
+  CloudRain, Sun, Moon, Cloud, CloudLightning, Wind, Compass, 
   Navigation, AlertTriangle, Shield, 
   Map as MapIcon, Send, Mic, Volume2, Heart, Settings as SettingsIcon,
   ChevronRight, RefreshCw, Layers, CheckCircle2, User, Activity, GraduationCap,
-  Sliders, PhoneCall, TrendingUp, FileText
+  Sliders, PhoneCall, TrendingUp, FileText, Droplets, Thermometer, Sparkles, LogIn
 } from 'lucide-react';
 
 import DisasterSimulationModal from './components/DisasterSimulationModal';
 import EmergencyCenterModal from './components/EmergencyCenterModal';
 import ClimateInsightsModal from './components/ClimateInsightsModal';
 import ReportGeneratorModal from './components/ReportGeneratorModal';
+import AuthModal, { UserProfile } from './components/AuthModal';
 
 // TypeScript Interfaces for WeatherGPT data structures
 export interface WeatherCurrent {
@@ -319,18 +320,47 @@ export default function WeatherGPT() {
   const [speechSupported, setSpeechSupported] = useState<boolean>(false);
   const [voicePlayback, setVoicePlayback] = useState<boolean>(false);
 
-  // Modals States
+  // Modals & Theme States
   const [simModalOpen, setSimModalOpen] = useState<boolean>(false);
   const [emergencyModalOpen, setEmergencyModalOpen] = useState<boolean>(false);
   const [climateModalOpen, setClimateModalOpen] = useState<boolean>(false);
   const [reportModalOpen, setReportModalOpen] = useState<boolean>(false);
+  
+  // Theme & User Authentication States
+  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
+  const [authModalOpen, setAuthModalOpen] = useState<boolean>(false);
+  const [chartMode, setChartMode] = useState<'rain' | 'temp'>('rain');
+  const [voiceStatus, setVoiceStatus] = useState<string>('');
 
   const chatEndRef = useRef<HTMLDivElement>(null);
   const text = LOCALIZATION[currentLang];
 
-  // Initialize Speech Recognition
+  // Initialize Theme, User Profile & Speech Recognition
   useEffect(() => {
     if (typeof window !== 'undefined') {
+      const savedTheme = localStorage.getItem('weathergpt_theme') as 'dark' | 'light';
+      if (savedTheme) {
+        setTheme(savedTheme);
+      }
+      
+      const savedUser = localStorage.getItem('weathergpt_user');
+      if (savedUser) {
+        try {
+          setCurrentUser(JSON.parse(savedUser));
+        } catch (e) {
+          console.error(e);
+        }
+      } else {
+        // Default Guest User
+        setCurrentUser({
+          name: "Guest Explorer",
+          email: "guest@weathergpt.local",
+          role: "general",
+          isGuest: true
+        });
+      }
+
       const win = window as unknown as SpeechRecognitionWindow;
       const SpeechRecognition = win.SpeechRecognition || win.webkitSpeechRecognition;
       if (SpeechRecognition) {
@@ -340,6 +370,23 @@ export default function WeatherGPT() {
       }
     }
   }, []);
+
+  const toggleTheme = () => {
+    const nextTheme = theme === 'dark' ? 'light' : 'dark';
+    setTheme(nextTheme);
+    localStorage.setItem('weathergpt_theme', nextTheme);
+  };
+
+  const handleUserLogin = (user: UserProfile) => {
+    setCurrentUser(user);
+    localStorage.setItem('weathergpt_user', JSON.stringify(user));
+    setCurrentMode(user.role);
+  };
+
+  const handleUserLogout = () => {
+    setCurrentUser(null);
+    localStorage.removeItem('weathergpt_user');
+  };
 
   // Fetch weather data function
   const fetchWeatherData = useCallback(async (loc: string) => {
@@ -558,38 +605,60 @@ export default function WeatherGPT() {
     }
   };
 
-  // Web Speech Recognition
+  // Enhanced Web Speech Recognition
   const startListening = () => {
-    if (typeof window !== 'undefined') {
-      const win = window as unknown as SpeechRecognitionWindow;
-      const SpeechRecognition = win.SpeechRecognition || win.webkitSpeechRecognition;
-      if (SpeechRecognition) {
-        const recognition = new SpeechRecognition();
-        recognition.lang = currentLang === 'hi' ? 'hi-IN' : (currentLang === 'mr' ? 'mr-IN' : 'en-US');
-        recognition.interimResults = false;
-        recognition.maxAlternatives = 1;
+    if (typeof window === 'undefined') return;
+    const win = window as unknown as SpeechRecognitionWindow;
+    const SpeechRecognition = win.SpeechRecognition || win.webkitSpeechRecognition;
 
-        recognition.onstart = () => {
-          setIsListening(true);
-        };
+    if (!SpeechRecognition) {
+      setVoiceStatus("Speech recognition is not supported in this browser. Please use Chrome, Edge, or Brave.");
+      setTimeout(() => setVoiceStatus(''), 5000);
+      return;
+    }
 
-        recognition.onresult = (event: SpeechRecognitionEvent) => {
-          const speechResult = event.results[0][0].transcript;
-          setChatInput(speechResult);
-          sendChatMessage(speechResult);
-        };
+    try {
+      const recognition = new SpeechRecognition();
+      recognition.lang = currentLang === 'hi' ? 'hi-IN' : (currentLang === 'mr' ? 'mr-IN' : 'en-US');
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
 
-        recognition.onerror = (e: SpeechRecognitionErrorEvent) => {
-          console.error(e);
-          setIsListening(false);
-        };
+      recognition.onstart = () => {
+        setIsListening(true);
+        setVoiceStatus("Listening... Speak clearly into your microphone.");
+      };
 
-        recognition.onend = () => {
-          setIsListening(false);
-        };
+      recognition.onresult = (event: SpeechRecognitionEvent) => {
+        const speechResult = event.results[0][0].transcript;
+        setChatInput(speechResult);
+        setVoiceStatus(`Voice Recognized: "${speechResult}"`);
+        sendChatMessage(speechResult);
+        setTimeout(() => setVoiceStatus(''), 4000);
+      };
 
-        recognition.start();
-      }
+      recognition.onerror = (e: SpeechRecognitionErrorEvent) => {
+        console.error("Speech recognition error:", e);
+        setIsListening(false);
+        if (e.error === 'not-allowed') {
+          setVoiceStatus("Microphone access denied. Please grant microphone permissions in your browser.");
+        } else if (e.error === 'no-speech') {
+          setVoiceStatus("No speech detected. Please try speaking again.");
+        } else {
+          setVoiceStatus(`Voice input error (${e.error}). Try typing your query.`);
+        }
+        setTimeout(() => setVoiceStatus(''), 5000);
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+      };
+
+      recognition.start();
+    } catch (e) {
+      console.error(e);
+      setIsListening(false);
+      setVoiceStatus("Failed to activate microphone. Please check browser permissions.");
+      setTimeout(() => setVoiceStatus(''), 5000);
     }
   };
 
@@ -606,7 +675,7 @@ export default function WeatherGPT() {
   };
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-slate-950 text-slate-100 font-sans relative">
+    <div className={`flex h-screen w-screen overflow-hidden ${theme === 'light' ? 'light-mode' : ''} bg-slate-950 text-slate-100 font-sans relative`}>
         {/* SIDEBAR NAVIGATION - Premium Dark Glassmorphism */}
         <aside className="hidden md:flex flex-col w-64 bg-slate-900/40 backdrop-blur-lg border-r border-slate-800/80 p-6 space-y-8 select-none z-10">
         <div className="flex items-center space-x-3">
@@ -812,6 +881,25 @@ export default function WeatherGPT() {
                 मरा
               </button>
             </div>
+
+            {/* Dark / Light Theme Toggle */}
+            <button
+              onClick={toggleTheme}
+              title={theme === 'dark' ? "Switch to Light Mode" : "Switch to Dark Mode"}
+              className="p-2 rounded-xl bg-slate-900 border border-slate-800 text-amber-400 hover:text-amber-300 transition shadow-md flex items-center justify-center cursor-pointer"
+            >
+              {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4 text-indigo-400" />}
+            </button>
+
+            {/* User Profile / Auth Modal Trigger */}
+            <button
+              onClick={() => setAuthModalOpen(true)}
+              className="flex items-center space-x-2 px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold shadow-md transition cursor-pointer"
+            >
+              <User className="h-3.5 w-3.5" />
+              <span className="max-w-[100px] truncate">{currentUser ? currentUser.name : 'Login / Guest'}</span>
+              {currentUser?.isGuest && <span className="px-1.5 py-0.5 text-[9px] bg-emerald-950/80 rounded text-emerald-300 border border-emerald-500/30">Guest</span>}
+            </button>
           </div>
         </header>
 
@@ -1059,22 +1147,101 @@ export default function WeatherGPT() {
                   )}
                 </div>
 
-                {/* Dynamic SVG Analytics Graphs (Replaces heavy canvas charts) */}
-                <div className="bg-slate-900/30 border border-slate-800/80 rounded-2xl p-6 shadow-xl">
-                  <h3 className="text-lg font-bold text-slate-200 mb-4">7-Day Precipitation Trend (%)</h3>
-                  <div className="h-32 flex items-end justify-between gap-4 mt-6">
-                    {weather.forecast.map((fc: WeatherForecastItem, idx: number) => (
-                      <div key={idx} className="flex-1 flex flex-col items-center group cursor-help">
-                        {/* Bar */}
-                        <div 
-                          className="w-full bg-gradient-to-t from-emerald-600 to-teal-500 rounded-t-md transition-all duration-500 group-hover:opacity-85 shadow"
-                          style={{ height: `${fc.rain_probability}%` }}
-                        />
-                        {/* Text */}
-                        <span className="text-[10px] font-bold text-slate-300 mt-2">{fc.rain_probability}%</span>
-                        <span className="text-[9px] text-slate-500 mt-0.5">{fc.day.substring(0, 3)}</span>
+                {/* Upgraded Dynamic Analytics Graphs with Dual Mode (Precipitation & Temperature) */}
+                <div className="bg-slate-900/40 backdrop-blur-md border border-slate-800/80 rounded-2xl p-6 shadow-xl relative overflow-hidden">
+                  
+                  {/* Header with Title & Tab Switcher */}
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <TrendingUp className="h-5 w-5 text-cyan-400" />
+                        <h3 className="text-lg font-bold text-slate-100">7-Day Meteorological Trend</h3>
                       </div>
-                    ))}
+                      <p className="text-xs text-slate-400 mt-0.5">Interactive forecast analytics & precipitation variance</p>
+                    </div>
+
+                    {/* Tab Toggle: Rain % vs Temp °C */}
+                    <div className="flex bg-slate-950/80 p-1 border border-slate-800 rounded-xl text-xs font-bold">
+                      <button
+                        onClick={() => setChartMode('rain')}
+                        className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition cursor-pointer ${
+                          chartMode === 'rain'
+                            ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-md'
+                            : 'text-slate-400 hover:text-slate-200'
+                        }`}
+                      >
+                        <Droplets className="h-3.5 w-3.5" />
+                        Precipitation (%)
+                      </button>
+                      <button
+                        onClick={() => setChartMode('temp')}
+                        className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition cursor-pointer ${
+                          chartMode === 'temp'
+                            ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-md'
+                            : 'text-slate-400 hover:text-slate-200'
+                        }`}
+                      >
+                        <Thermometer className="h-3.5 w-3.5" />
+                        Temperature (°C)
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Chart Container with Fixed Parent Height */}
+                  <div className="h-56 w-full flex items-end justify-between gap-3 pt-6 pb-2 px-3 bg-slate-950/60 rounded-xl border border-slate-800/60">
+                    {weather.forecast.map((fc: WeatherForecastItem, idx: number) => {
+                      const isRainMode = chartMode === 'rain';
+                      const displayVal = isRainMode ? `${fc.rain_probability}%` : `${fc.temp}°C`;
+                      
+                      // Calculate normalized height percentage for chart bars
+                      const barHeightPercent = isRainMode 
+                        ? Math.max(fc.rain_probability, 8) 
+                        : Math.min(Math.max(((fc.temp - 10) / 35) * 100, 15), 100);
+
+                      return (
+                        <div key={idx} className="flex-1 flex flex-col items-center justify-end h-full group relative cursor-pointer">
+                          
+                          {/* Tooltip on Hover */}
+                          <div className="absolute -top-16 opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none z-30 bg-slate-900 border border-slate-700 text-slate-100 text-[11px] p-2 rounded-xl shadow-2xl whitespace-nowrap flex flex-col items-center">
+                            <span className="font-bold text-cyan-300">{fc.day}</span>
+                            <span>{fc.condition} • {fc.temp}°C</span>
+                            <span className="text-[10px] text-slate-400">Rain: {fc.rain_probability}% | Wind: {fc.wind} km/h</span>
+                          </div>
+
+                          {/* Value Badge on top of bar */}
+                          <span className={`text-[11px] font-black mb-2 transition-transform duration-300 group-hover:-translate-y-1 ${
+                            isRainMode ? 'text-cyan-300' : 'text-amber-300'
+                          }`}>
+                            {displayVal}
+                          </span>
+
+                          {/* Bar Container Track with Explicit Height */}
+                          <div className="w-full h-32 bg-slate-900/90 border border-slate-800 rounded-t-xl overflow-hidden flex items-end relative p-1 shadow-inner">
+                            {/* Grid lines inside bar track */}
+                            <div className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:100%_16px] pointer-events-none" />
+                            
+                            {/* Filled Animated Bar */}
+                            <div 
+                              className={`w-full rounded-t-lg transition-all duration-700 ease-out shadow-lg ${
+                                isRainMode 
+                                  ? 'bg-gradient-to-t from-cyan-600 via-teal-500 to-emerald-400 group-hover:from-cyan-400 group-hover:to-emerald-300 bar-glow-cyan' 
+                                  : 'bg-gradient-to-t from-orange-600 via-amber-500 to-yellow-400 group-hover:from-orange-400 group-hover:to-yellow-300 bar-glow'
+                              }`}
+                              style={{ height: `${barHeightPercent}%` }}
+                            />
+                          </div>
+
+                          {/* Day & Icon */}
+                          <div className="mt-3 flex flex-col items-center">
+                            <span className="text-[11px] font-bold text-slate-300 group-hover:text-cyan-400 transition">
+                              {fc.day.substring(0, 3)}
+                            </span>
+                            <span className="text-[9px] text-slate-500 font-medium truncate max-w-[60px] text-center">{fc.condition}</span>
+                          </div>
+
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -1685,23 +1852,29 @@ export default function WeatherGPT() {
                 </button>
               </div>
 
+              {/* Voice status feedback toast */}
+              {voiceStatus && (
+                <div className="px-3 py-1.5 bg-slate-900/90 border-t border-slate-800 text-[11px] font-semibold text-cyan-400 flex items-center justify-between animate-in fade-in">
+                  <span>{voiceStatus}</span>
+                  <button onClick={() => setVoiceStatus('')} className="text-slate-500 hover:text-slate-300">×</button>
+                </div>
+              )}
+
               {/* Chat Input Controls */}
               <div className="flex h-12 items-center bg-slate-950 border-t border-slate-800 px-2 space-x-1.5">
-                {speechSupported && (
-                  <button 
-                    onClick={startListening}
-                    className={`flex-none h-8 w-8 rounded-lg flex items-center justify-center transition
-                      ${isListening ? 'bg-red-500 text-white animate-pulse' : 'bg-slate-900 text-slate-400 hover:bg-slate-800 hover:text-slate-200'}
-                    `}
-                    title="Voice input"
-                  >
-                    <Mic className="h-4 w-4" />
-                  </button>
-                )}
+                <button 
+                  onClick={startListening}
+                  className={`flex-none h-8 w-8 rounded-lg flex items-center justify-center transition cursor-pointer
+                    ${isListening ? 'bg-red-500 text-white mic-active' : 'bg-slate-900 text-slate-400 hover:bg-slate-800 hover:text-slate-200'}
+                  `}
+                  title={speechSupported ? "Speak to WeatherGPT AI" : "Voice input (Requires Chrome/Edge/Brave)"}
+                >
+                  <Mic className="h-4 w-4" />
+                </button>
                 
                 <button 
                   onClick={() => setVoicePlayback(!voicePlayback)}
-                  className={`flex-none h-8 w-8 rounded-lg flex items-center justify-center transition
+                  className={`flex-none h-8 w-8 rounded-lg flex items-center justify-center transition cursor-pointer
                     ${voicePlayback ? 'bg-emerald-500 text-white' : 'bg-slate-900 text-slate-400 hover:bg-slate-800 hover:text-slate-200'}
                   `}
                   title="Toggle Voice Output Speak replies"
@@ -1720,7 +1893,7 @@ export default function WeatherGPT() {
 
                 <button 
                   onClick={() => sendChatMessage()}
-                  className="flex-none h-8 w-8 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white flex items-center justify-center transition shadow shadow-emerald-500/10"
+                  className="flex-none h-8 w-8 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white flex items-center justify-center transition shadow shadow-emerald-500/10 cursor-pointer"
                 >
                   <Send className="h-3.5 w-3.5" />
                 </button>
@@ -1762,6 +1935,13 @@ export default function WeatherGPT() {
         isOpen={reportModalOpen}
         onClose={() => setReportModalOpen(false)}
         location={weather?.location || 'Pune'}
+      />
+      <AuthModal
+        isOpen={authModalOpen}
+        onClose={() => setAuthModalOpen(false)}
+        currentUser={currentUser}
+        onLogin={handleUserLogin}
+        onLogout={handleUserLogout}
       />
     </div>
   );
