@@ -1,13 +1,188 @@
 "use client";
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { 
-  CloudRain, Sun, Cloud, CloudLightning, Wind, Droplets, Compass, 
-  Eye, Thermometer, Sunset, Navigation, AlertTriangle, Shield, 
-  Map as MapIcon, Send, Mic, Volume2, Globe, Heart, Settings as SettingsIcon,
+  CloudRain, Sun, Cloud, CloudLightning, Wind, Compass, 
+  Navigation, AlertTriangle, Shield, 
+  Map as MapIcon, Send, Mic, Volume2, Heart, Settings as SettingsIcon,
   ChevronRight, RefreshCw, Layers, CheckCircle2, User, Activity, GraduationCap
 } from 'lucide-react';
+
+// TypeScript Interfaces for WeatherGPT data structures
+export interface WeatherCurrent {
+  temp: number;
+  feels_like: number;
+  condition: string;
+  humidity: number;
+  wind_speed: number;
+  wind_direction?: string;
+  rain_probability: number;
+  air_quality: string;
+  sunrise: string;
+  sunset: string;
+  icon: string;
+  source: string;
+  updated_at?: string;
+  pressure?: number;
+  visibility?: number;
+  uv_index?: number;
+}
+
+export interface WeatherForecastItem {
+  day: string;
+  temp: number;
+  condition: string;
+  icon: string;
+  rain_probability: number;
+  wind: number;
+  humidity: number;
+  risk_level: string;
+  recommendation: string;
+}
+
+export interface WeatherAlert {
+  title: string;
+  expected_period: string;
+  impacts: string[];
+  actions: string[];
+}
+
+export interface WeatherData {
+  location: string;
+  current: WeatherCurrent;
+  forecast: WeatherForecastItem[];
+  alerts?: WeatherAlert[];
+}
+
+export interface RiskFactor {
+  factor: string;
+  score: number;
+  weight?: number; // Supports the backend weight display
+  description: string;
+}
+
+export interface RiskData {
+  score: number;
+  category: string;
+  color: string;
+  breakdown: RiskFactor[];
+  disclaimer?: string;
+}
+
+export interface RouteTimelineItem {
+  name: string;
+  condition: string;
+  temp: number;
+  rain_probability: number;
+  risk_score: number;
+  risk_level: string;
+  color: string;
+  recommendation: string;
+}
+
+export interface RouteAnalysisData {
+  from_location: string;
+  to_location: string;
+  route_path: string;
+  highest_risk_level: string;
+  highest_risk_color: string;
+  timeline: RouteTimelineItem[];
+  ai_travel_recommendation: string;
+  source: string;
+}
+
+export interface DisasterMetrics {
+  active_alerts: number;
+  high_risk_areas: number;
+  flood_risk_count: number;
+  heavy_rainfall_count: number;
+  severe_weather_count: number;
+}
+
+export interface DisasterZone {
+  location: string;
+  hazard: string;
+  severity: string;
+  risk_score: number;
+}
+
+export interface DisasterDashboardData {
+  metrics: DisasterMetrics;
+  critical_zones: DisasterZone[];
+  ai_situation_summary: string;
+}
+
+export interface GlobalAlert {
+  id: string;
+  title: string;
+  severity: string;
+  location: string;
+  description: string;
+  expected_period: string;
+  actions: string | string[];
+}
+
+export interface ChatMessageMetadata {
+  alert_level?: string;
+  advice?: string;
+  type?: string;
+  weather_details?: WeatherData;
+  risk_details?: RiskData;
+  route_details?: RouteAnalysisData;
+}
+
+export interface ChatMessage {
+  id: number;
+  role: 'user' | 'assistant';
+  content: string;
+  created_at: string;
+  metadata?: ChatMessageMetadata;
+}
+
+// Browser Speech Recognition Types
+interface SpeechRecognitionInstance {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  maxAlternatives: number;
+  onstart: (() => void) | null;
+  onerror: ((event: SpeechRecognitionErrorEvent) => void) | null;
+  onend: (() => void) | null;
+  onresult: ((event: SpeechRecognitionEvent) => void) | null;
+  start: () => void;
+  stop: () => void;
+}
+
+interface SpeechRecognitionConstructor {
+  new (): SpeechRecognitionInstance;
+}
+
+interface SpeechRecognitionEvent {
+  resultIndex: number;
+  results: {
+    [index: number]: {
+      [index: number]: {
+        transcript: string;
+      };
+    };
+  };
+}
+
+interface SpeechRecognitionErrorEvent {
+  error: string;
+  message?: string;
+}
+
+interface SpeechRecognitionWindow {
+  SpeechRecognition?: SpeechRecognitionConstructor;
+  webkitSpeechRecognition?: SpeechRecognitionConstructor;
+}
+
+// Helper to generate message ID (impure, extracted outside render)
+const generateMessageId = (): number => {
+  return Date.now();
+};
 
 // Dynamically import WeatherMap with SSR disabled (Leaflet requires browser window)
 const WeatherMap = dynamic(() => import('./components/WeatherMap'), {
@@ -111,18 +286,18 @@ export default function WeatherGPT() {
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
 
   // Weather Data States
-  const [weather, setWeather] = useState<any>(null);
-  const [risk, setRisk] = useState<any>(null);
+  const [weather, setWeather] = useState<WeatherData | null>(null);
+  const [risk, setRisk] = useState<RiskData | null>(null);
   const [selectedForecastIndex, setSelectedForecastIndex] = useState<number>(0);
   const [routeFrom, setRouteFrom] = useState<string>('Pune');
   const [routeTo, setRouteTo] = useState<string>('Mumbai');
-  const [routeAnalysis, setRouteAnalysis] = useState<any>(null);
-  const [disasterDashboard, setDisasterDashboard] = useState<any>(null);
-  const [allAlerts, setAllAlerts] = useState<any[]>([]);
+  const [routeAnalysis, setRouteAnalysis] = useState<RouteAnalysisData | null>(null);
+  const [disasterDashboard, setDisasterDashboard] = useState<DisasterDashboardData | null>(null);
+  const [allAlerts, setAllAlerts] = useState<GlobalAlert[]>([]);
 
   // Chatbot States
   const [chatOpen, setChatOpen] = useState<boolean>(false);
-  const [chatMessages, setChatMessages] = useState<any[]>([
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
     {
       id: 1,
       role: 'assistant',
@@ -143,41 +318,18 @@ export default function WeatherGPT() {
   // Initialize Speech Recognition
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      const win = window as unknown as SpeechRecognitionWindow;
+      const SpeechRecognition = win.SpeechRecognition || win.webkitSpeechRecognition;
       if (SpeechRecognition) {
-        setSpeechSupported(true);
+        setTimeout(() => {
+          setSpeechSupported(true);
+        }, 0);
       }
     }
   }, []);
 
-  // Fetch initial data
-  useEffect(() => {
-    fetchWeatherData(searchLocation);
-    fetchDisasterMetrics();
-    fetchGlobalAlerts();
-  }, [searchLocation]);
-
-  // Keep chat scrolled to bottom
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [chatMessages, isTyping]);
-
-  // Load offline cache on mount
-  useEffect(() => {
-    const handleOnlineStatus = () => {
-      setIsOffline(!navigator.onLine);
-    };
-    window.addEventListener('online', handleOnlineStatus);
-    window.addEventListener('offline', handleOnlineStatus);
-    handleOnlineStatus();
-    
-    return () => {
-      window.removeEventListener('online', handleOnlineStatus);
-      window.removeEventListener('offline', handleOnlineStatus);
-    };
-  }, []);
-
-  const fetchWeatherData = async (loc: string) => {
+  // Fetch weather data function
+  const fetchWeatherData = useCallback(async (loc: string) => {
     setIsRefreshing(true);
     try {
       if (isOffline) {
@@ -206,7 +358,7 @@ export default function WeatherGPT() {
     } catch (e) {
       console.error(e);
       // Serve offline mocks
-      const localMocks: Record<string, any> = {
+      const localMocks: Record<string, WeatherData> = {
         pune: {
           location: "Pune, Maharashtra (Offline Cache)",
           current: { temp: 27, feels_like: 29.5, condition: "Heavy Rain", humidity: 88, wind_speed: 18, rain_probability: 92, air_quality: "Good (AQI 38)", sunrise: "06:14 AM", sunset: "06:58 PM", icon: "cloud-lightning", source: "Offline Local Storage" },
@@ -221,9 +373,9 @@ export default function WeatherGPT() {
     } finally {
       setIsRefreshing(false);
     }
-  };
+  }, [isOffline]);
 
-  const fetchDisasterMetrics = async () => {
+  const fetchDisasterMetrics = useCallback(async () => {
     try {
       const res = await fetch(`${BACKEND_URL}/api/disaster/dashboard`);
       if (res.ok) {
@@ -233,9 +385,9 @@ export default function WeatherGPT() {
     } catch (e) {
       console.error(e);
     }
-  };
+  }, []);
 
-  const fetchGlobalAlerts = async () => {
+  const fetchGlobalAlerts = useCallback(async () => {
     try {
       const res = await fetch(`${BACKEND_URL}/api/alerts`);
       if (res.ok) {
@@ -245,7 +397,43 @@ export default function WeatherGPT() {
     } catch (e) {
       console.error(e);
     }
-  };
+  }, []);
+
+  // Fetch initial data
+  useEffect(() => {
+    let active = true;
+    const load = async () => {
+      await Promise.resolve();
+      if (!active) return;
+      fetchWeatherData(searchLocation);
+      fetchDisasterMetrics();
+      fetchGlobalAlerts();
+    };
+    load();
+    return () => {
+      active = false;
+    };
+  }, [searchLocation, fetchWeatherData, fetchDisasterMetrics, fetchGlobalAlerts]);
+
+  // Keep chat scrolled to bottom
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [chatMessages, isTyping]);
+
+  // Load offline cache on mount
+  useEffect(() => {
+    const handleOnlineStatus = () => {
+      setIsOffline(!navigator.onLine);
+    };
+    window.addEventListener('online', handleOnlineStatus);
+    window.addEventListener('offline', handleOnlineStatus);
+    handleOnlineStatus();
+    
+    return () => {
+      window.removeEventListener('online', handleOnlineStatus);
+      window.removeEventListener('offline', handleOnlineStatus);
+    };
+  }, []);
 
   const runRouteAnalysis = async () => {
     try {
@@ -268,8 +456,8 @@ export default function WeatherGPT() {
     if (!textToSend.trim()) return;
 
     // Add user message
-    const userMsg = {
-      id: Date.now(),
+    const userMsg: ChatMessage = {
+      id: generateMessageId(),
       role: 'user',
       content: textToSend,
       created_at: new Date().toISOString()
@@ -294,8 +482,8 @@ export default function WeatherGPT() {
         const data = await res.json();
         setChatSessionId(data.session_id);
         
-        const assistantMsg = {
-          id: Date.now() + 1,
+        const assistantMsg: ChatMessage = {
+          id: generateMessageId() + 1,
           role: 'assistant',
           content: data.answer_text,
           metadata: data.metadata,
@@ -311,8 +499,8 @@ export default function WeatherGPT() {
     } catch (e) {
       console.error(e);
       setChatMessages(prev => [...prev, {
-        id: Date.now() + 1,
-        role: 'assistant',
+        id: generateMessageId() + 2,
+        role: 'assistant' as const,
         content: "Sorry, I am having trouble connecting to the AI brain right now. The local rule-based engine is offline.",
         created_at: new Date().toISOString()
       }]);
@@ -336,7 +524,8 @@ export default function WeatherGPT() {
   // Web Speech Recognition
   const startListening = () => {
     if (typeof window !== 'undefined') {
-      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      const win = window as unknown as SpeechRecognitionWindow;
+      const SpeechRecognition = win.SpeechRecognition || win.webkitSpeechRecognition;
       if (SpeechRecognition) {
         const recognition = new SpeechRecognition();
         recognition.lang = currentLang === 'hi' ? 'hi-IN' : (currentLang === 'mr' ? 'mr-IN' : 'en-US');
@@ -347,13 +536,13 @@ export default function WeatherGPT() {
           setIsListening(true);
         };
 
-        recognition.onresult = (event: any) => {
+        recognition.onresult = (event: SpeechRecognitionEvent) => {
           const speechResult = event.results[0][0].transcript;
           setChatInput(speechResult);
           sendChatMessage(speechResult);
         };
 
-        recognition.onerror = (e: any) => {
+        recognition.onerror = (e: SpeechRecognitionErrorEvent) => {
           console.error(e);
           setIsListening(false);
         };
@@ -621,7 +810,7 @@ export default function WeatherGPT() {
                 <div className="bg-slate-900/30 border border-slate-800/80 rounded-2xl p-6 shadow-xl">
                   <h3 className="text-lg font-bold text-slate-200 mb-4">{text.label_forecast}</h3>
                   <div className="flex space-x-4 overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-slate-800">
-                    {weather.forecast.map((fc: any, idx: number) => (
+                    {weather.forecast.map((fc: WeatherForecastItem, idx: number) => (
                       <button 
                         key={idx}
                         onClick={() => setSelectedForecastIndex(idx)}
@@ -672,7 +861,7 @@ export default function WeatherGPT() {
                 <div className="bg-slate-900/30 border border-slate-800/80 rounded-2xl p-6 shadow-xl">
                   <h3 className="text-lg font-bold text-slate-200 mb-4">7-Day Precipitation Trend (%)</h3>
                   <div className="h-32 flex items-end justify-between gap-4 mt-6">
-                    {weather.forecast.map((fc: any, idx: number) => (
+                    {weather.forecast.map((fc: WeatherForecastItem, idx: number) => (
                       <div key={idx} className="flex-1 flex flex-col items-center group cursor-help">
                         {/* Bar */}
                         <div 
@@ -724,7 +913,7 @@ export default function WeatherGPT() {
                         <h4 className="text-xs uppercase font-extrabold tracking-wider text-slate-400">{text.label_why}</h4>
                         <div className="space-y-1 text-xs">
                           {risk.breakdown.length > 0 ? (
-                            risk.breakdown.map((item: any, idx: number) => (
+                            risk.breakdown.map((item: RiskFactor, idx: number) => (
                               <div key={idx} className="flex justify-between items-center py-1.5 border-b border-slate-800/40">
                                 <span className="text-slate-300">{item.factor}</span>
                                 <span className="font-extrabold text-emerald-400">+{item.weight}</span>
@@ -745,7 +934,7 @@ export default function WeatherGPT() {
 
                 {/* Smart Disaster Alert Card */}
                 {weather.alerts && weather.alerts.length > 0 ? (
-                  weather.alerts.map((al: any, idx: number) => (
+                  weather.alerts.map((al: WeatherAlert, idx: number) => (
                     <div key={idx} className="bg-rose-950/20 border-2 border-rose-500/30 rounded-2xl p-6 shadow-xl relative overflow-hidden">
                       <div className="absolute right-0 top-0 h-16 w-16 bg-rose-500/10 rounded-full blur-2xl" />
                       
@@ -888,7 +1077,7 @@ export default function WeatherGPT() {
                     <h4 className="text-base font-extrabold text-white mb-6">Route Travel Waypoints</h4>
                     
                     <div className="relative pl-8 space-y-8 before:absolute before:left-3.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-800">
-                      {routeAnalysis.timeline.map((stop: any, idx: number) => (
+                      {routeAnalysis.timeline.map((stop: RouteTimelineItem, idx: number) => (
                         <div key={idx} className="relative flex justify-between items-start">
                           
                           {/* Colored timeline dot */}
@@ -970,7 +1159,7 @@ export default function WeatherGPT() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {allAlerts.length > 0 ? (
-                  allAlerts.map((al: any, idx: number) => (
+                  allAlerts.map((al: GlobalAlert, idx: number) => (
                     <div key={idx} className={`border rounded-2xl p-6 shadow-lg relative overflow-hidden bg-slate-900/30
                       ${al.severity === 'SEVERE' ? 'border-red-500/35 bg-red-950/10' : 
                         al.severity === 'WARNING' ? 'border-orange-500/35 bg-orange-950/10' : 
@@ -1061,7 +1250,7 @@ export default function WeatherGPT() {
                   <h4 className="text-base font-bold text-white mb-4">Priority Districts</h4>
                   
                   <div className="space-y-3">
-                    {disasterDashboard.critical_zones.map((zone: any, idx: number) => (
+                    {disasterDashboard.critical_zones.map((zone: DisasterZone, idx: number) => (
                       <div key={idx} className="flex justify-between items-center p-3 rounded-xl bg-slate-950/60 border border-slate-800/40 text-xs">
                         <div>
                           <p className="font-extrabold text-slate-200 uppercase">{zone.location}</p>
@@ -1202,7 +1391,7 @@ export default function WeatherGPT() {
                     <p>{msg.content}</p>
                     
                     {/* Inline weather card in chat assistant responses */}
-                    {msg.metadata && msg.metadata.type === 'weather' && (
+                    {msg.metadata && msg.metadata.type === 'weather' && msg.metadata.weather_details && msg.metadata.risk_details && (
                       <div className="mt-3 p-2.5 rounded-lg bg-slate-950/80 border border-slate-800/60 flex items-center justify-between text-[10px]">
                         <div>
                           <p className="font-bold text-white uppercase">{msg.metadata.weather_details.location}</p>
@@ -1217,7 +1406,7 @@ export default function WeatherGPT() {
                     )}
 
                     {/* Inline route card in chat responses */}
-                    {msg.metadata && msg.metadata.type === 'route' && (
+                    {msg.metadata && msg.metadata.type === 'route' && msg.metadata.route_details && (
                       <div className="mt-3 p-2.5 rounded-lg bg-slate-950/80 border border-slate-800/60 text-[10px] space-y-1">
                         <p className="font-bold text-white uppercase">Route Analysis</p>
                         <p className="text-slate-400">{msg.metadata.route_details.route_path}</p>

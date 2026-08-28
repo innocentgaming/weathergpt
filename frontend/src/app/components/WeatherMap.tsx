@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
 // Fix Leaflet marker icon issue
 if (typeof window !== 'undefined') {
-  delete (L.Icon.Default.prototype as any)._getIconUrl;
+  delete (L.Icon.Default.prototype as unknown as { _getIconUrl?: unknown })._getIconUrl;
   L.Icon.Default.mergeOptions({
     iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
     iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
@@ -69,23 +69,15 @@ interface WeatherMapProps {
 }
 
 export default function WeatherMap({ activeLayer, searchCenter = [18.97, 74.5], onMarkerClick }: WeatherMapProps) {
-  const [mapCenter, setMapCenter] = useState<[number, number]>([18.97, 74.5]); // Centered in Maharashtra
-
-  useEffect(() => {
-    if (searchCenter) {
-      setMapCenter(searchCenter);
-    }
-  }, [searchCenter]);
-
   return (
     <div className="relative h-full w-full rounded-2xl overflow-hidden shadow-2xl border border-slate-800">
       <MapContainer 
-        center={mapCenter} 
+        center={searchCenter} 
         zoom={8} 
         style={{ height: '100%', width: '100%', background: '#0f172a' }}
         scrollWheelZoom={true}
       >
-        <ChangeView center={mapCenter} />
+        <ChangeView center={searchCenter} />
         
         {/* Dark CartoDB basemap */}
         <TileLayer
@@ -95,7 +87,7 @@ export default function WeatherMap({ activeLayer, searchCenter = [18.97, 74.5], 
 
         {MAP_LOCATIONS.map((loc) => {
           let label = loc.temp;
-          let pinColor = loc.color;
+          const pinColor = loc.color;
 
           if (activeLayer === 'rain') {
             label = loc.condition.includes("Rain") ? "🌧️" : "☁️";
