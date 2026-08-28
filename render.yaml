@@ -1,10 +1,11 @@
 services:
-  # 1. FastAPI Backend Web Service
+  # 1. FastAPI Backend Web Service (Free Tier Native Python)
   - type: web
-    name: weathergpt-backend
-    runtime: docker
-    dockerfilePath: backend/Dockerfile
-    dockerContext: backend
+    name: weathergpt-backendnew
+    runtime: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: PORT
         value: 8000
@@ -17,14 +18,15 @@ services:
       - key: OPENWEATHER_API_KEY
         sync: false # Set in Render Dashboard
 
-  # 2. Next.js Frontend Web Service
+  # 2. Next.js Frontend Web Service (Free Tier Native Node.js)
   - type: web
-    name: weathergpt-frontend
-    runtime: docker
-    dockerfilePath: frontend/Dockerfile
-    dockerContext: frontend
+    name: weathergpt-frontendnew
+    runtime: node
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    startCommand: npm start
     envVars:
       - key: PORT
         value: 3000
       - key: NEXT_PUBLIC_API_URL
-        value: https://weathergpt-backendnew.onrender.com # Deployed backend URL
+        value: https://weathergpt-backendnew.onrender.com
