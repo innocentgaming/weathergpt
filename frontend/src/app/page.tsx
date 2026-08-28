@@ -326,8 +326,8 @@ export default function WeatherGPT() {
   const [climateModalOpen, setClimateModalOpen] = useState<boolean>(false);
   const [reportModalOpen, setReportModalOpen] = useState<boolean>(false);
   
-  // Theme & User Authentication States
-  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+  // Theme & User Authentication States (Default background set to Light mode)
+  const [theme, setTheme] = useState<'dark' | 'light'>('light');
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [authModalOpen, setAuthModalOpen] = useState<boolean>(false);
   const [chartMode, setChartMode] = useState<'rain' | 'temp'>('rain');
@@ -339,10 +339,8 @@ export default function WeatherGPT() {
   // Initialize Theme, User Profile & Speech Recognition
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const savedTheme = localStorage.getItem('weathergpt_theme') as 'dark' | 'light';
-      if (savedTheme) {
-        setTheme(savedTheme);
-      }
+      const savedTheme = (localStorage.getItem('weathergpt_theme') as 'dark' | 'light') || 'light';
+      setTheme(savedTheme);
       
       const savedUser = localStorage.getItem('weathergpt_user');
       if (savedUser) {
@@ -752,7 +750,7 @@ export default function WeatherGPT() {
           </button>
 
           <div className="pt-4 space-y-1.5 border-t border-slate-800/60">
-            <span className="px-4 text-[10px] uppercase font-bold tracking-wider text-slate-500">Hackathon Tools</span>
+            <span className="px-4 text-[10px] uppercase font-bold tracking-wider text-slate-500">Advanced Analytics & Tools</span>
             <button
               onClick={() => setSimModalOpen(true)}
               className="flex w-full items-center space-x-3 px-4 py-2.5 rounded-xl text-xs font-semibold text-rose-400 hover:bg-rose-500/10 transition"
