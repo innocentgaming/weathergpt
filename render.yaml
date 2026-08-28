@@ -3,6 +3,7 @@ services:
   - type: web
     name: weathergpt-backendnew
     runtime: python
+    plan: free
     rootDir: backend
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
@@ -22,6 +23,7 @@ services:
   - type: web
     name: weathergpt-frontendnew
     runtime: node
+    plan: free
     rootDir: frontend
     buildCommand: npm install && npm run build
     startCommand: npm start
