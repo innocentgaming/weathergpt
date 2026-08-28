@@ -15,27 +15,31 @@ if (typeof window !== 'undefined') {
   });
 }
 
+const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
 interface MapLocationData {
   name: string;
   lat: number;
   lon: number;
   temp: string;
   condition: string;
+  wind_speed: string;
+  rain_prob: string;
   risk: string;
   color: string;
   alert: string;
 }
 
 const INITIAL_LOCATIONS: MapLocationData[] = [
-  { name: "Pune", lat: 18.5204, lon: 73.8567, temp: "27°C", condition: "Heavy Rain", risk: "SEVERE", color: "red", alert: "Red Alert: Extreme Rainfall Watch" },
-  { name: "Mumbai", lat: 19.0760, lon: 72.8777, temp: "29°C", condition: "Moderate Rain", risk: "HIGH", color: "orange", alert: "Orange Warning: High Tide Ingress" },
-  { name: "Lonavala", lat: 18.7557, lon: 73.4091, temp: "21°C", condition: "Torrential Rain", risk: "SEVERE", color: "red", alert: "Red Alert: Landslide Watch" },
-  { name: "Khopoli", lat: 18.7904, lon: 73.3424, temp: "25°C", condition: "Heavy Rain", risk: "HIGH", color: "orange", alert: "Orange Alert: River Level Surge" },
-  { name: "Panvel", lat: 18.9894, lon: 73.1175, temp: "27°C", condition: "Moderate Rain", risk: "MODERATE", color: "amber", alert: "Yellow Watch: Active Precipitation" },
-  { name: "Delhi", lat: 28.7041, lon: 77.1025, temp: "38°C", condition: "Heatwave", risk: "SEVERE", color: "red", alert: "Red Alert: Thermal Stress" },
-  { name: "Bengaluru", lat: 12.9716, lon: 77.5946, temp: "24°C", condition: "Drizzle", risk: "LOW", color: "green", alert: "None" },
-  { name: "Chennai", lat: 13.0827, lon: 80.2707, temp: "31°C", condition: "Partly Cloudy", risk: "LOW", color: "green", alert: "None" },
-  { name: "Hyderabad", lat: 17.3850, lon: 78.4867, temp: "29°C", condition: "Partly Cloudy", risk: "LOW", color: "green", alert: "None" }
+  { name: "Pune", lat: 18.5204, lon: 73.8567, temp: "27°C", condition: "Heavy Rain", wind_speed: "18 km/h", rain_prob: "92%", risk: "SEVERE", color: "red", alert: "Red Alert: Extreme Rainfall Watch" },
+  { name: "Mumbai", lat: 19.0760, lon: 72.8777, temp: "29°C", condition: "Moderate Rain", wind_speed: "22 km/h", rain_prob: "80%", risk: "HIGH", color: "orange", alert: "Orange Warning: High Tide Ingress" },
+  { name: "Lonavala", lat: 18.7557, lon: 73.4091, temp: "21°C", condition: "Torrential Rain", wind_speed: "28 km/h", rain_prob: "98%", risk: "SEVERE", color: "red", alert: "Red Alert: Landslide Watch" },
+  { name: "Khopoli", lat: 18.7904, lon: 73.3424, temp: "25°C", condition: "Heavy Rain", wind_speed: "22 km/h", rain_prob: "90%", risk: "HIGH", color: "orange", alert: "Orange Alert: River Level Surge" },
+  { name: "Panvel", lat: 18.9894, lon: 73.1175, temp: "27°C", condition: "Moderate Rain", wind_speed: "16 km/h", rain_prob: "75%", risk: "MODERATE", color: "amber", alert: "Yellow Watch: Active Precipitation" },
+  { name: "Delhi", lat: 28.7041, lon: 77.1025, temp: "38°C", condition: "Heatwave", wind_speed: "12 km/h", rain_prob: "5%", risk: "SEVERE", color: "red", alert: "Red Alert: Thermal Stress" },
+  { name: "Bengaluru", lat: 12.9716, lon: 77.5946, temp: "24°C", condition: "Drizzle", wind_speed: "10 km/h", rain_prob: "30%", risk: "LOW", color: "green", alert: "None" },
+  { name: "Chennai", lat: 13.0827, lon: 80.2707, temp: "31°C", condition: "Partly Cloudy", wind_speed: "14 km/h", rain_prob: "20%", risk: "LOW", color: "green", alert: "None" },
+  { name: "Hyderabad", lat: 17.3850, lon: 78.4867, temp: "29°C", condition: "Partly Cloudy", wind_speed: "11 km/h", rain_prob: "15%", risk: "LOW", color: "green", alert: "None" }
 ];
 
 // Helper to recolor marker pin programmatically using Leaflet divIcon
@@ -53,14 +57,14 @@ const createCustomIcon = (color: string, label: string) => {
     className: 'custom-leaflet-marker',
     html: `
       <div class="relative flex items-center justify-center">
-        <span class="absolute inline-flex h-6 w-6 animate-ping rounded-full opacity-40" style="background-color: ${hexColor}"></span>
-        <div class="relative flex h-8 w-8 items-center justify-center rounded-full border-2 border-white text-[10px] font-bold text-white shadow-lg" style="background-color: ${hexColor}">
+        <span class="absolute inline-flex h-7 w-7 animate-ping rounded-full opacity-40" style="background-color: ${hexColor}"></span>
+        <div class="relative flex h-9 px-2 items-center justify-center rounded-full border-2 border-white text-[10px] font-bold text-white shadow-xl whitespace-nowrap" style="background-color: ${hexColor}">
           ${label}
         </div>
       </div>
     `,
-    iconSize: [32, 32],
-    iconAnchor: [16, 16],
+    iconSize: [40, 40],
+    iconAnchor: [20, 20],
   });
 };
 
@@ -89,7 +93,7 @@ export default function WeatherMap({ activeLayer, searchCenter = [18.97, 74.5], 
         const updated = await Promise.all(
           INITIAL_LOCATIONS.map(async (loc) => {
             try {
-              const res = await fetch(`http://localhost:8000/api/weather/current?location=${encodeURIComponent(loc.name)}`);
+              const res = await fetch(`${BACKEND_URL}/api/weather/current?location=${encodeURIComponent(loc.name)}`);
               if (res.ok) {
                 const data = await res.json();
                 const curr = data.weather?.current || {};
@@ -106,6 +110,8 @@ export default function WeatherMap({ activeLayer, searchCenter = [18.97, 74.5], 
                   ...loc,
                   temp: `${curr.temp ?? 27}°C`,
                   condition: curr.condition || loc.condition,
+                  wind_speed: `${curr.wind_speed ?? 15} km/h`,
+                  rain_prob: `${curr.rain_probability ?? 40}%`,
                   risk: rLvl,
                   color: col
                 };
@@ -128,8 +134,23 @@ export default function WeatherMap({ activeLayer, searchCenter = [18.97, 74.5], 
     return () => { isMounted = false; };
   }, []);
 
+  const getLayerTitle = () => {
+    switch(activeLayer) {
+      case 'rain': return '🌧️ Rainfall Forecast Layer';
+      case 'wind': return '💨 Wind Speed Layer';
+      case 'risk': return '⚠️ Warning & Risk Areas Layer';
+      default: return '🌡️ Temperature Distribution Layer';
+    }
+  };
+
   return (
     <div className="relative h-full w-full rounded-2xl overflow-hidden shadow-2xl border border-slate-800">
+      {/* Active Layer Badge Overlay */}
+      <div className="absolute top-4 right-4 z-[1000] bg-slate-900/90 backdrop-blur-md border border-slate-700/80 px-3.5 py-1.5 rounded-full text-xs font-bold text-emerald-400 shadow-xl flex items-center gap-2">
+        <span className="h-2 w-2 rounded-full bg-emerald-400 animate-ping" />
+        <span>{getLayerTitle()}</span>
+      </div>
+
       <MapContainer 
         center={searchCenter} 
         zoom={8} 
@@ -149,11 +170,11 @@ export default function WeatherMap({ activeLayer, searchCenter = [18.97, 74.5], 
           const pinColor = loc.color;
 
           if (activeLayer === 'rain') {
-            label = loc.condition.toLowerCase().includes("rain") || loc.condition.toLowerCase().includes("drizzle") ? "🌧️" : "☁️";
+            label = `🌧️ ${loc.rain_prob}`;
           } else if (activeLayer === 'wind') {
-            label = "💨";
+            label = `💨 ${loc.wind_speed}`;
           } else if (activeLayer === 'risk') {
-            label = loc.risk.substring(0, 3);
+            label = `⚠️ ${loc.risk.substring(0, 3)}`;
           }
 
           const icon = createCustomIcon(pinColor, label);
@@ -177,6 +198,8 @@ export default function WeatherMap({ activeLayer, searchCenter = [18.97, 74.5], 
                   <div className="mt-2 space-y-1 text-sm text-slate-600">
                     <p><span className="font-semibold text-slate-700">Live Temp:</span> {loc.temp}</p>
                     <p><span className="font-semibold text-slate-700">Condition:</span> {loc.condition}</p>
+                    <p><span className="font-semibold text-slate-700">Rain Prob:</span> {loc.rain_prob}</p>
+                    <p><span className="font-semibold text-slate-700">Wind Speed:</span> {loc.wind_speed}</p>
                     <p>
                       <span className="font-semibold text-slate-700">Risk Level:</span> 
                       <span className={`ml-1 px-1.5 py-0.5 rounded text-[10px] font-bold text-white

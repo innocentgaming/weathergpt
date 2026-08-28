@@ -288,6 +288,7 @@ export default function WeatherGPT() {
   const [currentLang, setCurrentLang] = useState<'en' | 'hi' | 'mr'>('en');
   const [currentMode, setCurrentMode] = useState<'general' | 'traveller' | 'farmer' | 'disaster' | 'school'>('general');
   const [searchLocation, setSearchLocation] = useState<string>('Pune');
+  const [activeMapLayer, setActiveMapLayer] = useState<'temp' | 'rain' | 'wind' | 'risk'>('temp');
   const [isOffline, setIsOffline] = useState<boolean>(false);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
 
@@ -1194,18 +1195,52 @@ export default function WeatherGPT() {
                 </div>
 
                 <div className="space-y-2">
-                  <button className="flex w-full items-center justify-between px-4 py-2.5 rounded-xl bg-slate-800 text-xs font-semibold text-emerald-400 border border-slate-700/60">
+                  <button 
+                    onClick={() => setActiveMapLayer('temp')}
+                    className={`flex w-full items-center justify-between px-4 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+                      activeMapLayer === 'temp' 
+                        ? 'bg-slate-800 text-emerald-400 border border-slate-700/60 shadow-md' 
+                        : 'hover:bg-slate-800/40 text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
                     <span className="flex items-center"><Layers className="h-4 w-4 mr-2" /> Temperature</span>
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                    {activeMapLayer === 'temp' && <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />}
                   </button>
-                  <button className="flex w-full items-center justify-between px-4 py-2.5 rounded-xl hover:bg-slate-800/40 text-xs font-semibold text-slate-400 hover:text-slate-200">
+
+                  <button 
+                    onClick={() => setActiveMapLayer('rain')}
+                    className={`flex w-full items-center justify-between px-4 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+                      activeMapLayer === 'rain' 
+                        ? 'bg-slate-800 text-emerald-400 border border-slate-700/60 shadow-md' 
+                        : 'hover:bg-slate-800/40 text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
                     <span className="flex items-center"><CloudRain className="h-4 w-4 mr-2" /> Rainfall</span>
+                    {activeMapLayer === 'rain' && <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />}
                   </button>
-                  <button className="flex w-full items-center justify-between px-4 py-2.5 rounded-xl hover:bg-slate-800/40 text-xs font-semibold text-slate-400 hover:text-slate-200">
+
+                  <button 
+                    onClick={() => setActiveMapLayer('wind')}
+                    className={`flex w-full items-center justify-between px-4 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+                      activeMapLayer === 'wind' 
+                        ? 'bg-slate-800 text-emerald-400 border border-slate-700/60 shadow-md' 
+                        : 'hover:bg-slate-800/40 text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
                     <span className="flex items-center"><Wind className="h-4 w-4 mr-2" /> Wind Speeds</span>
+                    {activeMapLayer === 'wind' && <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />}
                   </button>
-                  <button className="flex w-full items-center justify-between px-4 py-2.5 rounded-xl hover:bg-slate-800/40 text-xs font-semibold text-slate-400 hover:text-slate-200">
+
+                  <button 
+                    onClick={() => setActiveMapLayer('risk')}
+                    className={`flex w-full items-center justify-between px-4 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+                      activeMapLayer === 'risk' 
+                        ? 'bg-slate-800 text-emerald-400 border border-slate-700/60 shadow-md' 
+                        : 'hover:bg-slate-800/40 text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
                     <span className="flex items-center"><AlertTriangle className="h-4 w-4 mr-2" /> Warning Areas</span>
+                    {activeMapLayer === 'risk' && <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />}
                   </button>
                 </div>
 
@@ -1216,7 +1251,7 @@ export default function WeatherGPT() {
 
               {/* Leaflet container */}
               <div className="flex-1 min-h-[400px] h-full rounded-2xl overflow-hidden shadow-2xl border border-slate-800">
-                <WeatherMap activeLayer="temp" onMarkerClick={(name) => setSearchLocation(name)} />
+                <WeatherMap activeLayer={activeMapLayer} onMarkerClick={(name) => setSearchLocation(name)} />
               </div>
             </div>
           )}
