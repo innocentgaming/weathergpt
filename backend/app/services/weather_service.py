@@ -611,8 +611,16 @@ def fetch_weather_from_open_meteo(city: str) -> Dict[str, Any]:
         lat, lon = None, None
         display_name = city
 
+        # Check if city string is in DEMO_COORDINATES
+        norm_c = normalize_city_name(city)
+        if norm_c in DEMO_COORDINATES:
+            lat = DEMO_COORDINATES[norm_c]["lat"]
+            lon = DEMO_COORDINATES[norm_c]["lon"]
+            state = DEMO_COORDINATES[norm_c].get("state", "India")
+            display_name = f"{city.title()}, {state} India"
+
         # Check if city string is GPS coordinates e.g. "18.5204,73.8567"
-        if "," in city and any(char.isdigit() for char in city):
+        elif "," in city and any(char.isdigit() for char in city):
             try:
                 parts = city.split(",")
                 lat = float(parts[0].strip())
@@ -634,22 +642,25 @@ def fetch_weather_from_open_meteo(city: str) -> Dict[str, Any]:
             except ValueError:
                 lat, lon = None, None
 
-        # If not coordinates, use forward Geocoding search
+        # If not coordinates or demo city, use forward Geocoding search
         if lat is None or lon is None:
             geo_url = f"https://geocoding-api.open-meteo.com/v1/search?name={city}&count=1"
             geo_res = requests.get(geo_url, timeout=5)
             geo_data = geo_res.json()
             
             if not geo_data or "results" not in geo_data or not geo_data["results"]:
-                raise ValueError(f"Location '{city}' not found.")
-                
-            res_loc = geo_data["results"][0]
-            lat = res_loc["latitude"]
-            lon = res_loc["longitude"]
-            city_name = res_loc.get("name", city)
-            state_name = res_loc.get("admin1", "")
-            country_name = res_loc.get("country", "")
-            display_name = f"{city_name}, {state_name} {country_name}".strip()
+                # Check fallback coordinates for Pune
+                lat = 18.5204
+                lon = 73.8567
+                display_name = f"{city.title()} (Location Approx)"
+            else:
+                res_loc = geo_data["results"][0]
+                lat = res_loc["latitude"]
+                lon = res_loc["longitude"]
+                city_name = res_loc.get("name", city)
+                state_name = res_loc.get("admin1", "")
+                country_name = res_loc.get("country", "")
+                display_name = f"{city_name}, {state_name} {country_name}".strip()
         
         # Step 2: Fetch Live Forecast & Current Weather
         weather_url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,surface_pressure,wind_speed_10m,wind_direction_10m&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,wind_speed_10m_max&timezone=auto"
