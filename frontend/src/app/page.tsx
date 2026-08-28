@@ -509,7 +509,8 @@ export default function WeatherGPT() {
           query: textToSend,
           session_id: chatSessionId,
           role: currentMode,
-          lang: currentLang
+          lang: currentLang,
+          location: searchLocation || (weather ? weather.location : 'Pune')
         })
       });
 

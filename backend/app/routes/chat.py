@@ -14,6 +14,7 @@ class ChatRequest(BaseModel):
     session_id: Optional[str] = None
     role: Optional[str] = "general"
     lang: Optional[str] = None
+    location: Optional[str] = None
 
 @router.post("")
 def chat_endpoint(req: ChatRequest, db: Session = Depends(get_db)):
@@ -43,7 +44,8 @@ def chat_endpoint(req: ChatRequest, db: Session = Depends(get_db)):
             query=req.query,
             db=db,
             role=req.role,
-            lang_override=req.lang
+            lang_override=req.lang,
+            location_override=req.location
         )
         
         # 4. Save Assistant Message with metadata (weather details if any)

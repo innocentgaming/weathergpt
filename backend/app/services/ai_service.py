@@ -61,8 +61,10 @@ def detect_language(query: str) -> str:
     return "en"
 
 
-def extract_location(query: str, lang: str = "en") -> str:
-    """Dynamically extracts target location from query or falls back to 'pune'."""
+import requests
+
+def extract_location(query: str, lang: str = "en", default_location: Optional[str] = None) -> str:
+    """Dynamically extracts target location from query, geocodes candidates, or uses default_location."""
     q_lower = query.lower()
     
     # 1. Match known cities
@@ -77,21 +79,44 @@ def extract_location(query: str, lang: str = "en") -> str:
                 return eng_name
 
     # 3. Regex extraction for pattern "in <city>", "for <city>", "at <city>", "weather in <city>"
-    match = re.search(r'\b(?:in|at|for|near|around)\s+([a-zA-Z]{3,15})\b', q_lower)
+    match = re.search(r'\b(?:in|at|for|near|around)\s+([a-zA-Z]{3,20})\b', q_lower)
     if match:
         extracted = match.group(1).strip()
         if extracted not in ["today", "tomorrow", "this", "next", "the", "detail", "details", "forecast"]:
             return extracted
+
+    # 4. Check candidate words in query for Open-Meteo geocoding resolution
+    words = [w.strip() for w in re.split(r'[\s,]+', query) if w.strip()]
+    stop_words = {
+        "will", "shall", "can", "could", "would", "should", "does", "do", "did", "is", "are", "am", "was", "were",
+        "it", "what", "how", "why", "when", "where", "weather", "forecast", "rain", "rainy", "monsoon", "shower", "drizzle",
+        "today", "tomorrow", "in", "the", "for", "at", "idea", "good", "bad", "temp", "temperature", "hello", "hi", "hey",
+        "tell", "me", "give", "show", "please", "thanks", "thank", "you", "city", "place", "state", "now", "current"
+    }
+    candidate_words = [w for w in words if w.lower() not in stop_words and len(w) >= 3]
+    
+    for candidate in candidate_words:
+        try:
+            geo_res = requests.get(f"https://geocoding-api.open-meteo.com/v1/search?name={candidate}&count=1", timeout=2)
+            geo_data = geo_res.json()
+            if geo_data and "results" in geo_data and geo_data["results"]:
+                return candidate
+        except Exception:
+            pass
+
+    # 5. Fallback to default_location if passed from frontend active city, else 'pune'
+    if default_location and default_location.strip():
+        return default_location.strip()
             
     return "pune"
 
 
-def get_local_nlp_response(query: str, db: Session, role: str, lang: str) -> Dict[str, Any]:
+def get_local_nlp_response(query: str, db: Session, role: str, lang: str, default_location: Optional[str] = None) -> Dict[str, Any]:
     """
     Generates dynamic live-data NLP responses based on real-time weather, route analysis, and risk scoring.
     """
     q_lower = query.lower()
-    location = extract_location(query, lang)
+    location = extract_location(query, lang, default_location)
     weather_data = get_weather(db, location)
     risk_data = calculate_weather_risk(weather_data)
     
@@ -236,7 +261,7 @@ def get_local_nlp_response(query: str, db: Session, role: str, lang: str) -> Dic
     }
 
 
-def generate_chat_response(query: str, db: Session, role: str = "general", lang_override: Optional[str] = None) -> Dict[str, Any]:
+def generate_chat_response(query: str, db: Session, role: str = "general", lang_override: Optional[str] = None, location_override: Optional[str] = None) -> Dict[str, Any]:
     """
     Orchestrates the query to Gemini if available, otherwise falls back to dynamic local NLP.
     Outputs structured chat packet with grounded data details.
@@ -244,10 +269,10 @@ def generate_chat_response(query: str, db: Session, role: str = "general", lang_
     lang = lang_override or detect_language(query)
     
     if not GEMINI_AVAILABLE:
-        return get_local_nlp_response(query, db, role, lang)
+        return get_local_nlp_response(query, db, role, lang, default_location=location_override)
 
     # If Gemini is available, build the prompt grounded in live weather data
-    location = extract_location(query, lang)
+    location = extract_location(query, lang, default_location=location_override)
     weather_data = get_weather(db, location)
     risk_data = calculate_weather_risk(weather_data)
     
@@ -309,5 +334,5 @@ Return a response.
         }
     except Exception as e:
         print(f"Gemini generation error: {e}. Falling back to dynamic local NLP.")
-        return get_local_nlp_response(query, db, role, lang)
+        return get_local_nlp_response(query, db, role, lang, default_location=location_override)
 
