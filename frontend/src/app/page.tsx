@@ -852,6 +852,122 @@ export default function WeatherGPT() {
                   </div>
                 </div>
 
+                {/* DYNAMIC PERSONA MODE ADVISORY BANNER */}
+                <div className="bg-slate-900/60 backdrop-blur-md border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800/80 pb-4">
+                    <div>
+                      <span className="text-[10px] uppercase font-extrabold tracking-wider text-emerald-400">
+                        Active Operating Mode & Persona Advisory
+                      </span>
+                      <h3 className="text-base font-bold text-white flex items-center gap-2 mt-0.5">
+                        {currentMode === 'farmer' && "🌾 Agro-Meteorological Advisory (Farmer Mode)"}
+                        {currentMode === 'traveller' && "🚗 Highway & Route Safety Advisory (Traveller Mode)"}
+                        {currentMode === 'school' && "🏫 Campus & Outdoor Activity Advisory (School/College Mode)"}
+                        {currentMode === 'disaster' && "🚨 Disaster Operations Directive (Command Mode)"}
+                        {currentMode === 'general' && "👤 General Public Weather Advisory"}
+                      </h3>
+                    </div>
+                    
+                    {/* Interactive Mode Pills */}
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {[
+                        { id: 'general', label: '👤 Public', icon: User },
+                        { id: 'farmer', label: '🌾 Farmer', icon: GraduationCap },
+                        { id: 'traveller', label: '🚗 Traveller', icon: Navigation },
+                        { id: 'school', label: '🏫 School', icon: Shield },
+                        { id: 'disaster', label: '🚨 Disaster', icon: AlertTriangle }
+                      ].map((m) => (
+                        <button
+                          key={m.id}
+                          onClick={() => setCurrentMode(m.id as 'general' | 'traveller' | 'farmer' | 'disaster' | 'school')}
+                          className={`px-3 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+                            currentMode === m.id
+                              ? 'bg-emerald-500 text-slate-950 shadow-md font-extrabold'
+                              : 'bg-slate-800/80 text-slate-400 hover:bg-slate-800 hover:text-white'
+                          }`}
+                        >
+                          <span>{m.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Mode-Specific Information Content */}
+                  {currentMode === 'farmer' && (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+                      <div className="bg-emerald-950/20 border border-emerald-500/30 p-3 rounded-xl">
+                        <span className="font-bold text-emerald-400 block mb-1">💧 Irrigation Advisory</span>
+                        <p className="text-slate-300">Rain probability is {weather.current.rain_probability}%. Delay artificial field irrigation for 48 hours to prevent soil waterlogging.</p>
+                      </div>
+                      <div className="bg-emerald-950/20 border border-emerald-500/30 p-3 rounded-xl">
+                        <span className="font-bold text-emerald-400 block mb-1">🧪 Spraying & Fertilizers</span>
+                        <p className="text-slate-300">Avoid chemical pesticide spraying today; anticipated rain showers will wash off treatments.</p>
+                      </div>
+                      <div className="bg-emerald-950/20 border border-emerald-500/30 p-3 rounded-xl">
+                        <span className="font-bold text-emerald-400 block mb-1">🌾 Produce Protection</span>
+                        <p className="text-slate-300">Move harvested crops to elevated covered sheds. Verify drainage channels around crop fields.</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {currentMode === 'traveller' && (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+                      <div className="bg-amber-950/20 border border-amber-500/30 p-3 rounded-xl">
+                        <span className="font-bold text-amber-400 block mb-1">🛣️ Highway Visibility</span>
+                        <p className="text-slate-300">Visibility is {weather.current.visibility} km. Expect dense mist and fog patches in ghat corridors (Lonavala/Khandala).</p>
+                      </div>
+                      <div className="bg-amber-950/20 border border-amber-500/30 p-3 rounded-xl">
+                        <span className="font-bold text-amber-400 block mb-1">🚘 Hydroplaning Watch</span>
+                        <p className="text-slate-300">Wind velocity {weather.current.wind_speed} km/h with active rain. Reduce speed on wet asphalt curves.</p>
+                      </div>
+                      <div className="bg-amber-950/20 border border-amber-500/30 p-3 rounded-xl">
+                        <span className="font-bold text-amber-400 block mb-1">⏰ Recommended Driving Hours</span>
+                        <p className="text-slate-300">Optimal departure window: 6:00 AM to 11:00 AM before heavy afternoon cloudburst build-up.</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {currentMode === 'school' && (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+                      <div className="bg-cyan-950/20 border border-cyan-500/30 p-3 rounded-xl">
+                        <span className="font-bold text-cyan-400 block mb-1">⚽ Sports & PE Safety</span>
+                        <p className="text-slate-300">Physical education and outdoor ground activities should be moved indoors after 1:00 PM.</p>
+                      </div>
+                      <div className="bg-cyan-950/20 border border-cyan-500/30 p-3 rounded-xl">
+                        <span className="font-bold text-cyan-400 block mb-1">⚡ Lightning Risk Index</span>
+                        <p className="text-slate-300">Cloud-to-ground convective lightning hazard elevated during afternoon hours. Keep students indoors.</p>
+                      </div>
+                      <div className="bg-cyan-950/20 border border-cyan-500/30 p-3 rounded-xl">
+                        <span className="font-bold text-cyan-400 block mb-1">🚌 Bus Fleet Transit</span>
+                        <p className="text-slate-300">Coordinate evening dismissal routes early to avoid urban waterlogging hotspots along main arterial roads.</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {currentMode === 'disaster' && (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+                      <div className="bg-rose-950/20 border border-rose-500/30 p-3 rounded-xl">
+                        <span className="font-bold text-rose-400 block mb-1">🌊 River & Spillway Level</span>
+                        <p className="text-slate-300">Khadakwasla Dam spillway discharge monitored. Low-lying riverbank settlements put on watch.</p>
+                      </div>
+                      <div className="bg-rose-950/20 border border-rose-500/30 p-3 rounded-xl">
+                        <span className="font-bold text-rose-400 block mb-1">🚒 Emergency Deployment</span>
+                        <p className="text-slate-300">NDRF 5th Battalion rescue teams alerted. Rubber rescue boats positioned at high-risk transit hubs.</p>
+                      </div>
+                      <div className="bg-rose-950/20 border border-rose-500/30 p-3 rounded-xl">
+                        <span className="font-bold text-rose-400 block mb-1">📢 Public Directive</span>
+                        <p className="text-slate-300">Issue red alert public notifications for low-lying urban inundation zones. Evacuate basement structures.</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {currentMode === 'general' && (
+                    <div className="bg-slate-950/50 p-3 rounded-xl text-xs text-slate-300 flex items-center justify-between">
+                      <span>💡 <strong>General Recommendation:</strong> Current condition is {weather.current.condition} with {weather.current.rain_probability}% rain chance. Carry umbrella during afternoon hours.</span>
+                    </div>
+                  )}
+                </div>
+
                 {/* 7-Day Forecast Grid */}
                 <div className="bg-slate-900/30 border border-slate-800/80 rounded-2xl p-6 shadow-xl">
                   <h3 className="text-lg font-bold text-slate-200 mb-4">{text.label_forecast}</h3>

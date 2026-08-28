@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -15,14 +15,24 @@ if (typeof window !== 'undefined') {
   });
 }
 
-// Markers for Indian cities in Demo Mode
-const MAP_LOCATIONS = [
-  { name: "Pune", lat: 18.5204, lon: 73.8567, temp: "27°C", condition: "Heavy Rain", risk: "SEVERE", color: "red", alert: "Red Alert: Extreme Rainfall" },
+interface MapLocationData {
+  name: string;
+  lat: number;
+  lon: number;
+  temp: string;
+  condition: string;
+  risk: string;
+  color: string;
+  alert: string;
+}
+
+const INITIAL_LOCATIONS: MapLocationData[] = [
+  { name: "Pune", lat: 18.5204, lon: 73.8567, temp: "27°C", condition: "Heavy Rain", risk: "SEVERE", color: "red", alert: "Red Alert: Extreme Rainfall Watch" },
   { name: "Mumbai", lat: 19.0760, lon: 72.8777, temp: "29°C", condition: "Moderate Rain", risk: "HIGH", color: "orange", alert: "Orange Warning: High Tide Ingress" },
-  { name: "Lonavala", lat: 18.7557, lon: 73.4091, temp: "21°C", condition: "Extremely Heavy Rain", risk: "SEVERE", color: "red", alert: "Red Alert: Landslide Risk" },
-  { name: "Khopoli", lat: 18.7904, lon: 73.3424, temp: "25°C", condition: "Heavy Rainfall", risk: "HIGH", color: "orange", alert: "Orange Alert: River Rise" },
-  { name: "Panvel", lat: 18.9894, lon: 73.1175, temp: "27°C", condition: "Moderate Rain", risk: "MODERATE", color: "amber", alert: "Yellow Alert: Active Rain Watch" },
-  { name: "Delhi", lat: 28.7041, lon: 77.1025, temp: "38°C", condition: "Severe Heatwave", risk: "SEVERE", color: "red", alert: "Red Alert: Extreme Heatwave" },
+  { name: "Lonavala", lat: 18.7557, lon: 73.4091, temp: "21°C", condition: "Torrential Rain", risk: "SEVERE", color: "red", alert: "Red Alert: Landslide Watch" },
+  { name: "Khopoli", lat: 18.7904, lon: 73.3424, temp: "25°C", condition: "Heavy Rain", risk: "HIGH", color: "orange", alert: "Orange Alert: River Level Surge" },
+  { name: "Panvel", lat: 18.9894, lon: 73.1175, temp: "27°C", condition: "Moderate Rain", risk: "MODERATE", color: "amber", alert: "Yellow Watch: Active Precipitation" },
+  { name: "Delhi", lat: 28.7041, lon: 77.1025, temp: "38°C", condition: "Heatwave", risk: "SEVERE", color: "red", alert: "Red Alert: Thermal Stress" },
   { name: "Bengaluru", lat: 12.9716, lon: 77.5946, temp: "24°C", condition: "Drizzle", risk: "LOW", color: "green", alert: "None" },
   { name: "Chennai", lat: 13.0827, lon: 80.2707, temp: "31°C", condition: "Partly Cloudy", risk: "LOW", color: "green", alert: "None" },
   { name: "Hyderabad", lat: 17.3850, lon: 78.4867, temp: "29°C", condition: "Partly Cloudy", risk: "LOW", color: "green", alert: "None" }
@@ -69,6 +79,55 @@ interface WeatherMapProps {
 }
 
 export default function WeatherMap({ activeLayer, searchCenter = [18.97, 74.5], onMarkerClick }: WeatherMapProps) {
+  const [mapLocations, setMapLocations] = useState<MapLocationData[]>(INITIAL_LOCATIONS);
+
+  // Fetch live weather data dynamically for map markers
+  useEffect(() => {
+    let isMounted = true;
+    const fetchLiveMapData = async () => {
+      try {
+        const updated = await Promise.all(
+          INITIAL_LOCATIONS.map(async (loc) => {
+            try {
+              const res = await fetch(`http://localhost:8000/api/weather/current?location=${encodeURIComponent(loc.name)}`);
+              if (res.ok) {
+                const data = await res.json();
+                const curr = data.weather?.current || {};
+                const rData = data.risk || {};
+                const score = rData.score || 35;
+                
+                let col = "green";
+                let rLvl = "LOW";
+                if (score > 75) { col = "red"; rLvl = "SEVERE"; }
+                else if (score > 50) { col = "orange"; rLvl = "HIGH"; }
+                else if (score > 25) { col = "amber"; rLvl = "MODERATE"; }
+
+                return {
+                  ...loc,
+                  temp: `${curr.temp ?? 27}°C`,
+                  condition: curr.condition || loc.condition,
+                  risk: rLvl,
+                  color: col
+                };
+              }
+            } catch {
+              // fallback
+            }
+            return loc;
+          })
+        );
+        if (isMounted) {
+          setMapLocations(updated);
+        }
+      } catch {
+        // use initial
+      }
+    };
+
+    fetchLiveMapData();
+    return () => { isMounted = false; };
+  }, []);
+
   return (
     <div className="relative h-full w-full rounded-2xl overflow-hidden shadow-2xl border border-slate-800">
       <MapContainer 
@@ -85,12 +144,12 @@ export default function WeatherMap({ activeLayer, searchCenter = [18.97, 74.5], 
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
 
-        {MAP_LOCATIONS.map((loc) => {
+        {mapLocations.map((loc) => {
           let label = loc.temp;
           const pinColor = loc.color;
 
           if (activeLayer === 'rain') {
-            label = loc.condition.includes("Rain") ? "🌧️" : "☁️";
+            label = loc.condition.toLowerCase().includes("rain") || loc.condition.toLowerCase().includes("drizzle") ? "🌧️" : "☁️";
           } else if (activeLayer === 'wind') {
             label = "💨";
           } else if (activeLayer === 'risk') {
@@ -116,8 +175,8 @@ export default function WeatherMap({ activeLayer, searchCenter = [18.97, 74.5], 
                 <div className="text-slate-900 font-sans p-1">
                   <h3 className="font-bold text-base border-b pb-1 text-slate-800">{loc.name}</h3>
                   <div className="mt-2 space-y-1 text-sm text-slate-600">
-                    <p><span className="font-semibold text-slate-700">Temperature:</span> {loc.temp}</p>
-                    <p><span className="font-semibold text-slate-700">Weather:</span> {loc.condition}</p>
+                    <p><span className="font-semibold text-slate-700">Live Temp:</span> {loc.temp}</p>
+                    <p><span className="font-semibold text-slate-700">Condition:</span> {loc.condition}</p>
                     <p>
                       <span className="font-semibold text-slate-700">Risk Level:</span> 
                       <span className={`ml-1 px-1.5 py-0.5 rounded text-[10px] font-bold text-white
