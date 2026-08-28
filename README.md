@@ -23,94 +23,99 @@ WeatherGPT bridges this gap by acting as a **Decision Support Copilot** answerin
 
 ---
 
-## 2. Approach and Logic
+## 2. Approach and Architecture
 
-WeatherGPT uses an **Offline-First, Resilient AI Architecture** built on three core pillars:
+WeatherGPT uses an **Offline-Resilient & Dynamic Live API Architecture** built on three core pillars:
 
 ```mermaid
 graph TD
     User([User Query / UI Interaction]) --> ConnMgr{Smart Connectivity Manager}
-    ConnMgr -->|Online + Live API| LiveAPI[Live Weather & Gemini AI]
+    ConnMgr -->|Keyless Live API| OpenMeteo[Open-Meteo Live Weather & Geocoding API]
+    ConnMgr -->|AI LLM Reasoning| Gemini[Google Gemini 1.5 Flash API]
     ConnMgr -->|Offline / Timeout| LocalCache[(SQLite / IndexedDB Local Cache)]
-    ConnMgr -->|No Cache| DemoEngine[Deterministic Offline Risk & NLP Engine]
 
-    LiveAPI --> RiskEngine[Transparent Weather Risk Engine]
+    OpenMeteo --> RiskEngine[Transparent Weather Risk Engine]
+    Gemini --> RiskEngine
     LocalCache --> RiskEngine
-    DemoEngine --> RiskEngine
 
-    RiskEngine --> ToolDispatcher[AI Tool Calling Dispatcher]
+    RiskEngine --> ToolDispatcher[Dynamic Live NLP & Persona Dispatcher]
     ToolDispatcher --> Output[Contextual & Actionable Weather Intelligence]
 ```
 
 ### Key Architectural Decisions:
+- **Keyless Live Weather Integration**: Uses **Open-Meteo API** to dynamically fetch live weather metrics (temperature, rain probability, condition, wind speed, humidity) and geocode any city globally without requiring paid API keys.
+- **Dynamic Live NLP Engine**: The multilingual chatbot extracts location names dynamically (e.g. Mau, Lucknow, Satara, Mumbai) and builds responses grounded in live weather feeds across English, Hindi, and Marathi.
+- **Interactive GIS Map Layers**: Live switching between **Temperature**, **Rainfall Forecast**, **Wind Speeds**, and **Warning Areas** map layers with active layer badges and custom Leaflet marker overlays.
 - **Transparent Weather Risk Engine (0–100 Score)**: Instead of arbitrary black-box AI scores, risks are computed deterministically using weighted meteorological vectors:
   $$\text{Risk Score} = \text{Rainfall Impact} + \text{Wind Surge} + \text{Lightning Index} + \text{Flood Vulnerability}$$
-- **AI Tool Calling & Grounded Context**: The AI assistant uses dynamic tool calling (`get_current_weather`, `get_forecast`, `calculate_risk`, `analyze_route_weather`, `get_nearby_safe_locations`, `run_disaster_simulation`) to retrieve hard data *before* generating responses, preventing hallucination.
-- **Smart Connectivity Pipeline**: Automatic multi-tier fallback: `LIVE` $\rightarrow$ `CACHE` $\rightarrow$ `LOCAL DATA` $\rightarrow$ `DEMO DATA`. The system never crashes when internet or external APIs become unavailable.
+- **Smart Active City Sync**: If a user asks a general question (e.g. *"Will it rain today?"*), the chatbot automatically syncs with the active dashboard location.
 - **Hackathon Presentation Controller**: An integrated 9-step story bar allowing judges or presenters to effortlessly execute the full end-to-end demonstration flow.
 
 ---
 
-## 3. How the Solution Works
+## 3. Core Capabilities & Modules
 
-WeatherGPT consists of a Next.js 16 (Turbopack) frontend and a Python FastAPI backend structured as follows:
-
-### Core Modules:
-1. **Weather Dashboard & Hourly Timeline**: Interactive weather cards displaying temperature, feels like, humidity, wind, pressure, visibility, UV index, rain probability, AQI, and data freshness indicators.
-2. **AI Weather Assistant (Multilingual & Multi-Persona)**: Conversational copilot supporting English, Hindi, and Marathi with Web Speech API voice synthesis and speech recognition. Supports specialized personas (General Public, Traveller, Farmer, Disaster Control, School/College).
+1. **Weather Dashboard & Hourly Timeline**: Interactive weather cards displaying live temperature, feels like, humidity, wind, pressure, visibility, UV index, rain probability, AQI, and data freshness indicators.
+2. **AI Weather Assistant (Multilingual & Multi-Persona)**: Conversational copilot supporting English, Hindi (हिंदी), and Marathi (मराठी) with Web Speech API voice synthesis and speech recognition. Supports specialized personas:
+   - *General Public*
+   - *Traveller Mode*
+   - *Farmer / Agricultural Advisory*
+   - *Disaster Command Control*
+   - *School / College Administration*
 3. **Route Weather Intelligence**: Analyzes travel safety along highway corridors (e.g., Pune $\rightarrow$ Mumbai Expressway via Lonavala, Khopoli, Panvel), rating risk waypoint-by-waypoint and suggesting optimal departure windows.
-4. **Interactive GIS Weather & Disaster Map**: Leaflet GIS map with toggleable overlays (Temperature, Precipitation, Wind, Risk, Disaster Zones). Includes offline grid fallback when map tiles cannot load.
+4. **Interactive GIS Weather & Disaster Map**: Leaflet GIS map with toggleable Map Layers (**Temperature**, **Rainfall**, **Wind Speeds**, **Warning Areas**) and click-to-view city risk popups.
 5. **Disaster Command Center & Emergency Preparedness**: Tactical dashboard for authorities displaying active alerts, flood-risk zones, AI situation summaries, nearby safe shelter finder, and hazard safety checklists.
-6. **Disaster & What-If Simulation Engine**: Allows scenario testing (Heavy Rain, Flood, Heatwave, Cyclone, Thunderstorm) or parameter sliders (+% Rain, +°C Temp, +km/h Wind) to compute hypothetical risk deltas.
+6. **Disaster & What-If Simulation Engine**: Scenario testing (Heavy Rain, Flood, Heatwave, Cyclone, Thunderstorm) or parameter sliders (+% Rain, +°C Temp, +km/h Wind) to compute hypothetical risk deltas.
 7. **Climate Insights & Report Generator**: 30-year climatological baseline analytics and 1-click Weather Report generation exportable as **JSON**, **CSV**, or **TXT**.
 
 ---
 
-## 4. Assumptions Made
+## 4. Assumptions & Fallbacks
 
-1. **Demo Mode Default**: Out-of-the-box, the backend operates in **Demo Mode (`DEMO_MODE=True`)** with realistic meteorological datasets for Indian cities (Pune, Mumbai, Delhi, Lonavala, etc.) to ensure instant execution without requiring paid API keys.
-2. **API Resilience**: If live external APIs (OpenWeatherMap / Google Gemini) fail or time out, the system automatically falls back to local SQLite cached data or rule-based advisory engines without throwing unhandled exceptions.
-3. **Browser Capabilities**: Voice assistant features rely on native Browser Web Speech APIs (`webkitSpeechRecognition` & `SpeechSynthesis`). When unsupported by a browser, the UI gracefully degrades to text-only mode.
+1. **Keyless Execution**: Operates out-of-the-box using free keyless APIs (Open-Meteo) for live real-time weather globally.
+2. **API Resilience**: If external API calls fail or time out, the system automatically falls back to SQLite cached data or local demo datasets without crashing.
+3. **Browser Capabilities**: Voice assistant features rely on native Browser Web Speech APIs (`webkitSpeechRecognition` & `SpeechSynthesis`). When unsupported, the UI gracefully degrades to text-only mode.
 
 ---
 
 ## 5. Evaluation Focus Areas
 
 ### 🟢 Code Quality (Structure, Readability, Maintainability)
-- **Frontend**: Modular component hierarchy in Next.js 16 (`HackathonPresentationBar`, `DisasterSimulationModal`, `EmergencyCenterModal`, `ClimateInsightsModal`, `ReportGeneratorModal`, `WeatherMap`). Strict TypeScript interfaces for all data contracts.
+- **Frontend**: Modular Next.js component hierarchy (`WeatherMap`, `HackathonPresentationBar`, `DisasterSimulationModal`, `EmergencyCenterModal`, `ClimateInsightsModal`, `ReportGeneratorModal`). Strict TypeScript interfaces for all data contracts.
 - **Backend**: Clean FastAPI router modularity (`routes/weather.py`, `chat.py`, `route.py`, `alerts.py`, `disaster.py`, `emergency.py`, `simulation.py`, `climate.py`, `location.py`, `report.py`). Pydantic models for request validation and SQLAlchemy ORM models for database persistence.
 
 ### 🛡️ Security (Safe and Responsible Implementation)
-- **Environment Key Hygiene**: API keys (`GEMINI_API_KEY`, `OPENWEATHER_API_KEY`) are kept strictly server-side in backend `.env` and never exposed to client bundles.
-- **Input Sanitization**: User chat inputs and location query parameters are sanitized before querying SQLite databases (parameterized SQL queries via SQLAlchemy) to prevent SQL injection or XSS.
-- **Trust & Source Transparency**: Official government alerts (*🔴 ACTIVE WARNING*) are visually distinct from AI recommendations. AI summaries explicitly disclaim: *"AI-generated advisory. For official emergency orders, follow state authorities."*
+- **Environment Key Hygiene**: Optional API keys (`GEMINI_API_KEY`, `OPENWEATHER_API_KEY`) are kept strictly server-side in backend `.env`.
+- **Input Sanitization**: User chat inputs and location query parameters are sanitized before querying databases (parameterized SQL queries via SQLAlchemy).
+- **Trust & Source Transparency**: Official government alerts (*🔴 ACTIVE WARNING*) are visually distinct from AI recommendations. AI summaries explicitly disclaim official authority boundaries.
 
 ### ⚡ Efficiency (Optimal Use of Resources)
-- **Fast Build & Load Times**: Production build compiles in `<1s` using Next.js Turbopack.
-- **Intelligent Caching**: LocalStorage and SQLite caching minimize redundant API requests. Repeated queries for the same city within the cache TTL are served instantaneously.
-- **Resource Attribution**: Optimized execution payloads for low-bandwidth mobile networks during disaster conditions.
+- **Fast Build & Load Times**: Production build compiles cleanly using Next.js Turbopack.
+- **Intelligent Caching**: LocalStorage and SQLite caching minimize redundant API requests. Repeated queries within the cache TTL are served instantaneously.
 
 ### 🧪 Testing (Validation of Functionality)
 - **Automated Integration Tests**: Comprehensive test suite in [`backend/tests/test_backend.py`](file:///d:/vivek%20idea/backend/tests/test_backend.py) validating all 12 core API endpoints:
   ```bash
-  d:\vivek idea\backend\.venv\Scripts\python.exe backend/tests/test_backend.py
+  backend\.venv\Scripts\python.exe backend/tests/test_backend.py
   ```
   - **Result**: All 12 backend integration tests PASSED with Exit Code 0.
-- **Zero-Warning Codebase**: Frontend passes strict TypeScript validation (`npx tsc --noEmit`) and ESLint checks (`npm run lint`) with zero errors and zero warnings.
 
 ### ♿ Accessibility (Inclusive and Usable Design)
-- **High-Contrast Glassmorphic UI**: Uses curated dark-mode color palettes with high contrast text and visual risk pills (Emerald = Low, Amber = Moderate, Orange = High, Red = Severe).
+- **High-Contrast Glassmorphic UI**: Curated dark-mode color palettes with visual risk pills (Emerald = Low, Amber = Moderate, Orange = High, Red = Severe).
 - **Multilingual Support**: Fully localized UI labels and chatbot responses in **English**, **Hindi (हिंदी)**, and **Marathi (मराठी)**.
-- **Voice Navigation**: Built-in Speech-to-Text microphone input and Text-to-Speech voice playback for hands-free or screen-reader accessibility.
-- **Non-Color Risk Indicators**: Uses icons (🟢 🟡 🟠 🔴), numerical scores (0–100), and text badges alongside color coding so risk is clear to colorblind users.
+- **Voice Navigation**: Built-in Speech-to-Text microphone input and Text-to-Speech voice playback.
 
 ---
 
 ## 🚀 Quick Start & Local Setup
 
-### 1. Backend Setup (FastAPI)
+### 1. One-Click Windows Demo Runner
+Double-click `run_demo.bat` in the root folder to start both Backend and Frontend servers automatically!
+
+### 2. Backend Setup (FastAPI)
 ```bash
 cd backend
+
 # Create virtual environment
 python -m venv .venv
 .venv\Scripts\activate   # On Windows (or source .venv/bin/activate on Linux/Mac)
@@ -126,14 +131,12 @@ python app/main.py
 ```
 *Backend runs on `http://localhost:8000`*
 
-### 2. Frontend Setup (Next.js)
+### 3. Frontend Setup (Next.js)
 ```bash
 cd frontend
+
 # Install packages
 npm install
-
-# Run linter & typecheck
-npm run lint
 
 # Start development server
 npm run dev
