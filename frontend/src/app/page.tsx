@@ -681,7 +681,7 @@ export default function WeatherGPT() {
             ⛈️
           </div>
           <div>
-            <h1 className="font-extrabold text-xl tracking-tight text-slate-900 dark:text-white">
+            <h1 className="font-extrabold text-xl tracking-tight text-slate-100">
               {text.app_title}
             </h1>
             <span className="text-[10px] uppercase font-bold tracking-wider text-emerald-500/80">IMD Copilot</span>
