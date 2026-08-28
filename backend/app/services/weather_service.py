@@ -616,7 +616,8 @@ def get_weather(db: Session, location: str) -> Dict[str, Any]:
     norm_city = normalize_city_name(location)
     
     # 1. Check Demo Mode priority or if city is a demo city in demo mode
-    if settings.DEMO_MODE and norm_city in MOCK_WEATHER_DATA:
+    # Only use mock data if the OpenWeatherMap API key is not configured.
+    if settings.DEMO_MODE and norm_city in MOCK_WEATHER_DATA and not settings.OPENWEATHER_API_KEY:
         data = dict(MOCK_WEATHER_DATA[norm_city])
         # Update timestamp to match current system time
         cur_time = datetime.now().strftime("%I:%M %p")
