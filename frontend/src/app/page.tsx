@@ -10,7 +10,6 @@ import {
   Sliders, PhoneCall, TrendingUp, FileText
 } from 'lucide-react';
 
-import HackathonPresentationBar from './components/HackathonPresentationBar';
 import DisasterSimulationModal from './components/DisasterSimulationModal';
 import EmergencyCenterModal from './components/EmergencyCenterModal';
 import ClimateInsightsModal from './components/ClimateInsightsModal';
@@ -319,9 +318,7 @@ export default function WeatherGPT() {
   const [speechSupported, setSpeechSupported] = useState<boolean>(false);
   const [voicePlayback, setVoicePlayback] = useState<boolean>(false);
 
-  // Hackathon Presentation & Modals States
-  const [hackathonBarOpen, setHackathonBarOpen] = useState<boolean>(true);
-  const [currentHackathonStep, setCurrentHackathonStep] = useState<number>(1);
+  // Modals States
   const [simModalOpen, setSimModalOpen] = useState<boolean>(false);
   const [emergencyModalOpen, setEmergencyModalOpen] = useState<boolean>(false);
   const [climateModalOpen, setClimateModalOpen] = useState<boolean>(false);
@@ -571,38 +568,6 @@ export default function WeatherGPT() {
     }
   };
 
-  // Hackathon Presentation 9-Step Story Flow Handler
-  const handleSelectHackathonStep = (stepId: number) => {
-    setCurrentHackathonStep(stepId);
-    if (stepId === 1) {
-      setActiveTab('dashboard');
-      fetchWeatherData('Pune');
-    } else if (stepId === 2) {
-      setActiveTab('dashboard');
-      setChatOpen(true);
-      setChatInput('Will it rain tomorrow in Pune?');
-    } else if (stepId === 3) {
-      setActiveTab('route');
-      setRouteFrom('Pune');
-      setRouteTo('Mumbai');
-      runRouteAnalysis();
-    } else if (stepId === 4) {
-      setActiveTab('map');
-    } else if (stepId === 5) {
-      setActiveTab('dashboard');
-    } else if (stepId === 6) {
-      setCurrentLang('mr');
-      setChatOpen(true);
-      setChatInput('उद्या पुण्यात पाऊस पडणार आहे का?');
-    } else if (stepId === 7) {
-      setIsOffline(true);
-    } else if (stepId === 8) {
-      setSimModalOpen(true);
-    } else if (stepId === 9) {
-      setActiveTab('disaster');
-    }
-  };
-
   // Icons Helper
   const getWeatherIcon = (iconName: string) => {
     switch (iconName) {
@@ -616,14 +581,7 @@ export default function WeatherGPT() {
   };
 
   return (
-    <div className="flex flex-col h-screen w-screen overflow-hidden bg-slate-950 text-slate-100 font-sans">
-      <HackathonPresentationBar
-        currentStep={currentHackathonStep}
-        onSelectStep={handleSelectHackathonStep}
-        isOpen={hackathonBarOpen}
-        onToggleOpen={() => setHackathonBarOpen(!hackathonBarOpen)}
-      />
-      <div className="flex flex-1 overflow-hidden relative">
+    <div className="flex h-screen w-screen overflow-hidden bg-slate-950 text-slate-100 font-sans relative">
         {/* SIDEBAR NAVIGATION - Premium Dark Glassmorphism */}
         <aside className="hidden md:flex flex-col w-64 bg-slate-900/40 backdrop-blur-lg border-r border-slate-800/80 p-6 space-y-8 select-none z-10">
         <div className="flex items-center space-x-3">
@@ -1594,8 +1552,6 @@ export default function WeatherGPT() {
         </footer>
 
       </main>
-
-      </div>
 
       {/* MODALS */}
       <DisasterSimulationModal
