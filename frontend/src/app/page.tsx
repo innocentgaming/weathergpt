@@ -202,6 +202,138 @@ const WeatherMap = dynamic(() => import('./components/WeatherMap'), {
   )
 });
 
+// Translation helper functions for dynamic backend text
+const translateCondition = (condition: string, lang: string): string => {
+  if (!condition || lang === 'en') return condition;
+  
+  const mapHi: Record<string, string> = {
+    "Partly Cloudy": "आंशिक रूप से बादल",
+    "Broken Clouds": "खंडित बादल",
+    "Overcast": "छाए हुए बादल",
+    "Clear Sky": "साफ़ आसमान",
+    "Clear": "साफ़ आसमान",
+    "Sunny": "धूप वाला मौसम",
+    "Light Rain": "हल्की बारिश",
+    "Moderate Rain": "मध्यम बारिश",
+    "Heavy Rain": "भारी बारिश",
+    "Thunderstorm": "गर्जन के साथ तूफान",
+    "Rain Showers": "बारिश की बौछारें",
+    "Rain": "बारिश",
+    "Clouds": "बादल",
+    "Mist": "धुंध",
+    "Fog": "कोहरा",
+    "Haze": "धुंध"
+  };
+
+  const mapMr: Record<string, string> = {
+    "Partly Cloudy": "अंशतः ढगाळ",
+    "Broken Clouds": "खंडित ढगाळ",
+    "Overcast": "पूर्ण ढगाळ",
+    "Clear Sky": "निरभ्र आकाश",
+    "Clear": "निरभ्र आकाश",
+    "Sunny": "ऊन्ह",
+    "Light Rain": "हलका पाऊस",
+    "Moderate Rain": "मध्यम पाऊस",
+    "Heavy Rain": "मुसळधार पाऊस",
+    "Thunderstorm": "विजांसह वादळ",
+    "Rain Showers": "पावसाच्या सरी",
+    "Rain": "पाऊस",
+    "Clouds": "ढगाळ",
+    "Mist": "धुकं",
+    "Fog": "दाट धुकं",
+    "Haze": "धुके"
+  };
+
+  if (lang === 'hi') return mapHi[condition] || condition;
+  if (lang === 'mr') return mapMr[condition] || condition;
+  return condition;
+};
+
+const translateRiskCategory = (category: string, lang: string): string => {
+  if (lang === 'hi') {
+    if (category === 'SEVERE') return 'अति गंभीर';
+    if (category === 'HIGH') return 'उच्च जोखिम';
+    if (category === 'MODERATE') return 'मध्यम जोखिम';
+    if (category === 'LOW') return 'कम जोखिम';
+  } else if (lang === 'mr') {
+    if (category === 'SEVERE') return 'अति गंभीर';
+    if (category === 'HIGH') return 'उच्च धोका';
+    if (category === 'MODERATE') return 'मध्यम धोका';
+    if (category === 'LOW') return 'कमी धोका';
+  }
+  return category;
+};
+
+const translateRiskFactor = (factor: string, lang: string): string => {
+  if (!factor || lang === 'en') return factor;
+
+  const factorHi: Record<string, string> = {
+    "Very High Precipitation Probability (>80%)": "अत्यधिक वर्षा की संभावना (>80%)",
+    "High Wind Velocity (>40 km/h)": "तेज हवा की गति (>40 किमी/घंटा)",
+    "Extremely Low Visibility (<2 km)": "अत्यंत कम दृश्यता (<2 किमी)",
+    "Extreme Heat Wave (>40°C)": "भीषण लू / अत्यधिक तापमान (>40°C)",
+    "Poor Air Quality Index (AQI > 200)": "खराब वायु गुणवत्ता (AQI > 200)",
+    "High UV Index (>8)": "उच्च यूवी इंडेक्स (>8)"
+  };
+
+  const factorMr: Record<string, string> = {
+    "Very High Precipitation Probability (>80%)": "अतिवृष्टीची उच्च शक्यता (>80%)",
+    "High Wind Velocity (>40 km/h)": "वादळी वार्याचा वेग (>40 किमी/तास)",
+    "Extremely Low Visibility (<2 km)": "अत्यंत कमी दृश्यमानता (<2 किमी)",
+    "Extreme Heat Wave (>40°C)": "तीव्र उष्णतेची लाट (>40°C)",
+    "Poor Air Quality Index (AQI > 200)": "प्रदूषित हवा (AQI > 200)",
+    "High UV Index (>8)": "उच्च यूव्ही इंडेक्स (>8)"
+  };
+
+  if (lang === 'hi') return factorHi[factor] || factor;
+  if (lang === 'mr') return factorMr[factor] || factor;
+  return factor;
+};
+
+const translateDay = (day: string, lang: string): string => {
+  if (!day || lang === 'en') return day;
+
+  const daysHi: Record<string, string> = {
+    "Today": "आज",
+    "Friday": "शुक्रवार",
+    "Saturday": "शनिवार",
+    "Sunday": "रविवार",
+    "Monday": "सोमवार",
+    "Tuesday": "मंगलवार",
+    "Wednesday": "बुधवार",
+    "Thursday": "गुरुवार",
+    "Mon": "सोम",
+    "Tue": "मंगल",
+    "Wed": "बुध",
+    "Thu": "गुरु",
+    "Fri": "शुक्र",
+    "Sat": "शनि",
+    "Sun": "रवि"
+  };
+
+  const daysMr: Record<string, string> = {
+    "Today": "आज",
+    "Friday": "शुक्रवार",
+    "Saturday": "शनिवार",
+    "Sunday": "रविवार",
+    "Monday": "सोमवार",
+    "Tuesday": "मंगळवार",
+    "Wednesday": "बुधवार",
+    "Thursday": "गुरूवार",
+    "Mon": "सोम",
+    "Tue": "मंगळ",
+    "Wed": "बुध",
+    "Thu": "गुरू",
+    "Fri": "शुक्र",
+    "Sat": "शनि",
+    "Sun": "रवि"
+  };
+
+  if (lang === 'hi') return daysHi[day] || day;
+  if (lang === 'mr') return daysMr[day] || day;
+  return day;
+};
+
 // Localization bundle
 const LOCALIZATION = {
   en: {
@@ -227,7 +359,75 @@ const LOCALIZATION = {
     mode_school: "School/College",
     status_online: "Online",
     status_offline: "Offline Mode",
-    disclaimer: "WeatherGPT provides AI-assisted insights based on available weather feeds. For emergencies, always follow instructions from authorized government and emergency management authorities."
+    disclaimer: "WeatherGPT provides AI-assisted insights based on available weather feeds. For emergencies, always follow instructions from authorized government and emergency management authorities.",
+
+    source: "Source",
+    feels_like: "Feels Like",
+    humidity: "Humidity",
+    wind: "Wind",
+    precipitation: "Precipitation",
+    atm_pressure: "Atm Pressure",
+    visibility: "Visibility",
+    uv_index: "UV Index",
+    air_quality: "Air Quality",
+    active_operating_mode: "Active Operating Mode & Persona Advisory",
+
+    mode_title_farmer: "🌾 Agro-Meteorological Advisory (Farmer Mode)",
+    mode_title_traveller: "🚗 Highway & Route Safety Advisory (Traveller Mode)",
+    mode_title_school: "🏫 Campus & Outdoor Activity Advisory (School/College Mode)",
+    mode_title_disaster: "🚨 Disaster Operations Directive (Command Mode)",
+    mode_title_general: "👤 General Public Weather Advisory",
+
+    mode_pill_public: "👤 Public",
+    mode_pill_farmer: "🌾 Farmer",
+    mode_pill_traveller: "🚗 Traveller",
+    mode_pill_school: "🏫 School",
+    mode_pill_disaster: "🚨 Disaster",
+
+    farmer_irrigation_title: "💧 Irrigation Advisory",
+    farmer_irrigation_desc: "Delay artificial field irrigation for 48 hours to prevent soil waterlogging.",
+    farmer_spraying_title: "🧪 Spraying & Fertilizers",
+    farmer_spraying_desc: "Avoid chemical pesticide spraying today; anticipated rain showers will wash off treatments.",
+    farmer_produce_title: "🌾 Produce Protection",
+    farmer_produce_desc: "Move harvested crops to elevated covered sheds. Verify drainage channels around crop fields.",
+
+    traveller_vis_title: "🛣️ Highway Visibility",
+    traveller_vis_desc: "Expect dense mist and fog patches in ghat corridors (Lonavala/Khandala).",
+    traveller_hydro_title: "🚘 Hydroplaning Watch",
+    traveller_hydro_desc: "Wind velocity high with active rain. Reduce speed on wet asphalt curves.",
+    traveller_hours_title: "⏰ Recommended Driving Hours",
+    traveller_hours_desc: "Optimal departure window: 6:00 AM to 11:00 AM before heavy afternoon cloudburst build-up.",
+
+    school_sports_title: "⚽ Sports & PE Safety",
+    school_sports_desc: "Physical education and outdoor ground activities should be moved indoors after 1:00 PM.",
+    school_lightning_title: "⚡ Lightning Risk Index",
+    school_lightning_desc: "Cloud-to-ground convective lightning hazard elevated during afternoon hours. Keep students indoors.",
+    school_bus_title: "🚌 Bus Fleet Transit",
+    school_bus_desc: "Coordinate evening dismissal routes early to avoid urban waterlogging hotspots along main arterial roads.",
+
+    disaster_river_title: "🌊 River & Spillway Level",
+    disaster_river_desc: "Khadakwasla Dam spillway discharge monitored. Low-lying riverbank settlements put on watch.",
+    disaster_rescue_title: "🚒 Emergency Deployment",
+    disaster_rescue_desc: "NDRF 5th Battalion rescue teams alerted. Rubber rescue boats positioned at high-risk transit hubs.",
+    disaster_public_title: "📢 Public Directive",
+    disaster_public_desc: "Issue red alert public notifications for low-lying urban inundation zones. Evacuate basement structures.",
+
+    general_rec_prefix: "💡 General Recommendation:",
+
+    day_details: "Day Details",
+    ai_advice: "AI Advice:",
+    rain_prob: "Rain Prob",
+    no_active_warnings: "No Active Weather Warnings",
+    clear_area_msg: "Current area is classified as clear by meteorological alerts.",
+
+    advanced_tools: "Advanced Analytics & Tools",
+    disaster_sim: "Disaster Simulator",
+    emergency_center: "Emergency Center",
+    climate_insights: "Climate Insights",
+    export_report: "Export Report",
+    login_guest: "Login / Guest",
+    guest_tag: "Guest",
+    no_risk_indicators: "No high-risk indicators active."
   },
   hi: {
     app_title: "वेदरजीपीटी",
@@ -252,7 +452,75 @@ const LOCALIZATION = {
     mode_school: "स्कूल/कॉलेज",
     status_online: "ऑनलाइन",
     status_offline: "ऑफ़लाइन मोड",
-    disclaimer: "वेदरजीपीटी उपलब्ध डेटा के आधार पर एआई-जनरेटेड इनसाइट्स प्रदान करता है। आपातकालीन स्थितियों में हमेशा आधिकारिक सरकारी निर्देशों का पालन करें।"
+    disclaimer: "वेदरजीपीटी उपलब्ध डेटा के आधार पर एआई-जनरेटेड इनसाइट्स प्रदान करता है। आपातकालीन स्थितियों में हमेशा आधिकारिक सरकारी निर्देशों का पालन करें।",
+
+    source: "स्रोत",
+    feels_like: "अनुभूत तापमान",
+    humidity: "नमी",
+    wind: "हवा",
+    precipitation: "वर्षा संभावना",
+    atm_pressure: "वायु दबाव",
+    visibility: "दृश्यता",
+    uv_index: "यूवी इंडेक्स",
+    air_quality: "वायु गुणवत्ता",
+    active_operating_mode: "सक्रिय कार्य मोड एवं सलाह",
+
+    mode_title_farmer: "🌾 कृषि-मौसम परामर्श (किसान मोड)",
+    mode_title_traveller: "🚗 राजमार्ग व मार्ग सुरक्षा परामर्श (यात्री मोड)",
+    mode_title_school: "🏫 परिसर व बाहरी गतिविधि सलाह (स्कूल/कॉलेज मोड)",
+    mode_title_disaster: "🚨 आपदा संचालन निर्देश (कमांड मोड)",
+    mode_title_general: "👤 सामान्य जनता मौसम सलाह",
+
+    mode_pill_public: "👤 आम जनता",
+    mode_pill_farmer: "🌾 किसान",
+    mode_pill_traveller: "🚗 यात्री",
+    mode_pill_school: "🏫 स्कूल",
+    mode_pill_disaster: "🚨 आपदा",
+
+    farmer_irrigation_title: "💧 सिंचाई सलाह",
+    farmer_irrigation_desc: "खेत में जलभराव रोकने के लिए अगले 48 घंटों तक सिंचाई टालें।",
+    farmer_spraying_title: "🧪 छिड़काव और उर्वरक",
+    farmer_spraying_desc: "आज रासायनिक कीटनाशकों के छिड़काव से बचें; बारिश से दवा धुल जाएगी।",
+    farmer_produce_title: "🌾 फसल सुरक्षा",
+    farmer_produce_desc: "कटी हुई फसलों को ढके हुए शेड में रखें और जल निकासी की जांच करें।",
+
+    traveller_vis_title: "🛣️ राजमार्ग दृश्यता",
+    traveller_vis_desc: "घाट क्षेत्रों (लोनावाला/खंडाला) में घने कोहरे की उम्मीद है।",
+    traveller_hydro_title: "🚘 स्लिप / फिसलने का खतरा",
+    traveller_hydro_desc: "तेज हवा और बारिश के दौरान गीली सड़कों व मोड़ों पर वाहन की गति धीमी रखें।",
+    traveller_hours_title: "⏰ अनुशंसित यात्रा समय",
+    traveller_hours_desc: "उत्तम यात्रा समय: दोपहर की भारी बारिश से पहले सुबह 6:00 बजे से 11:00 बजे तक।",
+
+    school_sports_title: "⚽ खेल व शारीरिक सुरक्षा",
+    school_sports_desc: "दोपहर 1:00 बजे के बाद खेलकूद और बाहरी गतिविधियों को हॉल के अंदर रखें।",
+    school_lightning_title: "⚡ बिजली गिरने का जोखिम",
+    school_lightning_desc: "दोपहर में बिजली गिरने का खतरा अधिक है। छात्रों को परिसर के अंदर रखें।",
+    school_bus_title: "🚌 स्कूल बस परिवहन",
+    school_bus_desc: "जलभराव से बचने के लिए शाम की छुट्टी के बस रूट समय से पहले व्यवस्थित करें।",
+
+    disaster_river_title: "🌊 नदी व बांध जलस्तर",
+    disaster_river_desc: "खड़कवासला बांध के डिस्चार्ज पर नज़र रखी जा रही है। तटीय बस्तियां अलर्ट पर हैं।",
+    disaster_rescue_title: "🚒 आपातकालीन तैनाती",
+    disaster_rescue_desc: "NDRF 5वीं बटालियन बचाव दल सतर्क है। रबर नावें उच्च जोखिम क्षेत्रों में तैनात हैं।",
+    disaster_public_title: "📢 सार्वजनिक निर्देश",
+    disaster_public_desc: "निचले क्षेत्रों के लिए रेड अलर्ट जारी करें। बेसमेंट खाली कराएं।",
+
+    general_rec_prefix: "💡 सामान्य सलाह:",
+
+    day_details: "दिन का विवरण",
+    ai_advice: "एआई सलाह:",
+    rain_prob: "बारिश संभावना",
+    no_active_warnings: "कोई सक्रिय मौसम चेतावनी नहीं",
+    clear_area_msg: "वर्तमान क्षेत्र मौसम चेतावनियों से पूर्णतः मुक्त है।",
+
+    advanced_tools: "उन्नत विश्लेषण और उपकरण",
+    disaster_sim: "आपदा सिम्युलेटर",
+    emergency_center: "आपतकालीन केंद्र",
+    climate_insights: "जलवायु अंतर्दृष्टि",
+    export_report: "रिपोर्ट निर्यात",
+    login_guest: "लॉगिन / अतिथि",
+    guest_tag: "अतिथि",
+    no_risk_indicators: "कोई उच्च जोखिम संकेतक सक्रिय नहीं है।"
   },
   mr: {
     app_title: "वेदरजीपीटी",
@@ -277,7 +545,75 @@ const LOCALIZATION = {
     mode_school: "शाळा/कॉलेज",
     status_online: "ऑनलाइन",
     status_offline: "ऑफलाईन मोड",
-    disclaimer: "वेदरजीपीटी उपलब्ध डेटाच्या आधारे एआय-जनरेटेड इनसाइट्स प्रदान करते. आपत्कालीन परिस्थितीत नेहमी अधिकृत सरकारी सूचनांचे पालन करा."
+    disclaimer: "वेदरजीपीटी उपलब्ध डेटाच्या आधारे एआय-जनरेटेड इनसाइट्स प्रदान करते. आपत्कालीन परिस्थितीत नेहमी अधिकृत सरकारी सूचनांचे पालन करा.",
+
+    source: "स्रोत",
+    feels_like: "जाणवणारा तापमान",
+    humidity: "आर्द्रता",
+    wind: "वारा",
+    precipitation: "पावसाची शक्यता",
+    atm_pressure: "हवेचा दाब",
+    visibility: "दृश्यमानता",
+    uv_index: "युव्ही इंडेक्स",
+    air_quality: "हवेची गुणवत्ता",
+    active_operating_mode: "सक्रिय कार्य मोड व सल्ला",
+
+    mode_title_farmer: "🌾 शेती-हवामान सल्ला (शेतकरी मोड)",
+    mode_title_traveller: "🚗 महामार्ग व प्रवास सुरक्षितता (प्रवासी मोड)",
+    mode_title_school: "🏫 परिसर व मैदानी उपक्रम सल्ला (शाळा/कॉलेज)",
+    mode_title_disaster: "🚨 आपत्ती व्यवस्थापन निर्देश (कमांड मोड)",
+    mode_title_general: "👤 सामान्य नागरिक हवामान सल्ला",
+
+    mode_pill_public: "👤 नागरिक",
+    mode_pill_farmer: "🌾 शेतकरी",
+    mode_pill_traveller: "🚗 प्रवासी",
+    mode_pill_school: "🏫 शाळा",
+    mode_pill_disaster: "🚨 आपत्ती",
+
+    farmer_irrigation_title: "💧 सिंचन सल्ला",
+    farmer_irrigation_desc: "शेतात पाणी साचू नये म्हणून पुढील 48 तास सिंचन पुढे ढकला.",
+    farmer_spraying_title: "🧪 फवारणी व खते",
+    farmer_spraying_desc: "आज रासायनिक कीटकनाशक फवारणी टाळा; पावसाने औषध वाहून जाईल.",
+    farmer_produce_title: "🌾 पीक संरक्षण",
+    farmer_produce_desc: "काढणी केलेले पीक सुरक्षित शेडमध्ये ठेवा व पाण्याचा निचरा तपासा.",
+
+    traveller_vis_title: "🛣️ महामार्ग दृश्यमानता",
+    traveller_vis_desc: "घाट परिसरात (लोणावळा/खंडाळा) दाट धुक्याची शक्यता आहे.",
+    traveller_hydro_title: "🚘 घसरगुंडी धोका",
+    traveller_hydro_desc: "वादळी व ओल्या रस्त्यांवर वाहनाचा वेग कमी ठेवा.",
+    traveller_hours_title: "⏰ प्रवासाची योग्य वेळ",
+    traveller_hours_desc: "योग्य वेळ: दुपारी मुसळधार पावसापूर्वी सकाळी 6:00 ते 11:00.",
+
+    school_sports_title: "⚽ मैदानी उपक्रम सुरक्षा",
+    school_sports_desc: "दुपारी 1:00 नंतर मैदानी खेळ हॉलमध्ये घ्या.",
+    school_lightning_title: "⚡ वीज पडण्याचा धोका",
+    school_lightning_desc: "दुपारी विजांचा धोका जास्त आहे. विद्यार्थ्यांना वर्गात ठेवा.",
+    school_bus_title: "🚌 शाळा बस वाहतूक",
+    school_bus_desc: "पाणी साचण्यापूर्वी संध्याकाळचे बस मार्ग वेळेआधी नियोजन करा.",
+
+    disaster_river_title: "🌊 नदी व धरण पातळी",
+    disaster_river_desc: "खडकवासला धरणातून सोडणाऱ्या पाण्यावर लक्ष ठेवले आहे.",
+    disaster_rescue_title: "🚒 आपत्कालीन पथक",
+    disaster_rescue_desc: "NDRF 5वी बटालियन बचाव पथक सतर्क आहे. रबरी बोटी तैनात आहेत.",
+    disaster_public_title: "📢 सार्वजनिक निर्देश",
+    disaster_public_desc: "सखल भागांसाठी रेड अलर्ट जारी करा. तळघरे रिकामी करा.",
+
+    general_rec_prefix: "💡 सामान्य सल्ला:",
+
+    day_details: "दिवसाचा तपशील",
+    ai_advice: "एआय सल्ला:",
+    rain_prob: "पावसाची शक्यता",
+    no_active_warnings: "कोणताही सक्रिय इशारा नाही",
+    clear_area_msg: "सध्याचा परिसर हवामान इशार्‍यांपासून पूर्णपणे सुरक्षित आहे.",
+
+    advanced_tools: "प्रगत विश्लेषण आणि साधने",
+    disaster_sim: "आपत्ती सिम्युलेटर",
+    emergency_center: "आपत्कालीन केंद्र",
+    climate_insights: "हवामान अंतर्दृष्टी",
+    export_report: "अहवाल निर्यात",
+    login_guest: "लॉगिन / पाहुणे",
+    guest_tag: "पाहुणे",
+    no_risk_indicators: "कोणताही उच्च जोखीम दर्शक सक्रिय नाही."
   }
 };
 
@@ -750,13 +1086,13 @@ export default function WeatherGPT() {
           </button>
 
           <div className="pt-4 space-y-1.5 border-t border-slate-800/60">
-            <span className="px-4 text-[10px] uppercase font-bold tracking-wider text-slate-500">Advanced Analytics & Tools</span>
+            <span className="px-4 text-[10px] uppercase font-bold tracking-wider text-slate-500">{text.advanced_tools}</span>
             <button
               onClick={() => setSimModalOpen(true)}
               className="flex w-full items-center space-x-3 px-4 py-2.5 rounded-xl text-xs font-semibold text-rose-400 hover:bg-rose-500/10 transition"
             >
               <Sliders className="h-4 w-4 text-rose-400" />
-              <span>Disaster Simulator</span>
+              <span>{text.disaster_sim}</span>
             </button>
 
             <button
@@ -764,7 +1100,7 @@ export default function WeatherGPT() {
               className="flex w-full items-center space-x-3 px-4 py-2.5 rounded-xl text-xs font-semibold text-red-400 hover:bg-red-500/10 transition"
             >
               <PhoneCall className="h-4 w-4 text-red-400" />
-              <span>Emergency Center</span>
+              <span>{text.emergency_center}</span>
             </button>
 
             <button
@@ -772,7 +1108,7 @@ export default function WeatherGPT() {
               className="flex w-full items-center space-x-3 px-4 py-2.5 rounded-xl text-xs font-semibold text-cyan-400 hover:bg-cyan-500/10 transition"
             >
               <TrendingUp className="h-4 w-4 text-cyan-400" />
-              <span>Climate Insights</span>
+              <span>{text.climate_insights}</span>
             </button>
 
             <button
@@ -780,7 +1116,7 @@ export default function WeatherGPT() {
               className="flex w-full items-center space-x-3 px-4 py-2.5 rounded-xl text-xs font-semibold text-emerald-400 hover:bg-emerald-500/10 transition"
             >
               <FileText className="h-4 w-4 text-emerald-400" />
-              <span>Export Report</span>
+              <span>{text.export_report}</span>
             </button>
           </div>
         </nav>
@@ -931,7 +1267,7 @@ export default function WeatherGPT() {
                       <h2 className="text-2xl font-extrabold text-white tracking-tight uppercase">{weather.location}</h2>
                       <p className="text-xs text-slate-400 mt-1 flex items-center">
                         <span className="inline-block h-2 w-2 rounded-full bg-emerald-500 mr-2 animate-pulse" />
-                        Source: {weather.current.source} ({weather.current.updated_at})
+                        {text.source}: {weather.current.source} ({weather.current.updated_at})
                       </p>
                     </div>
                     {isRefreshing && <RefreshCw className="h-5 w-5 animate-spin text-emerald-400" />}
@@ -946,34 +1282,34 @@ export default function WeatherGPT() {
                         <span className="text-5xl md:text-6xl font-black text-white leading-none tracking-tighter">
                           {weather.current.temp}°C
                         </span>
-                        <h3 className="text-lg font-bold text-slate-300 mt-1">{weather.current.condition}</h3>
+                        <h3 className="text-lg font-bold text-slate-300 mt-1">{translateCondition(weather.current.condition, currentLang)}</h3>
                       </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-x-8 gap-y-3 w-full md:w-auto text-sm border-t md:border-t-0 border-slate-800/80 pt-4 md:pt-0">
-                      <div className="text-slate-400">Feels Like: <span className="font-semibold text-slate-200">{weather.current.feels_like}°C</span></div>
-                      <div className="text-slate-400">Humidity: <span className="font-semibold text-slate-200">{weather.current.humidity}%</span></div>
-                      <div className="text-slate-400">Wind: <span className="font-semibold text-slate-200">{weather.current.wind_speed} km/h {weather.current.wind_direction}</span></div>
-                      <div className="text-slate-400">Precipitation: <span className="font-semibold text-slate-200">{weather.current.rain_probability}%</span></div>
+                      <div className="text-slate-400">{text.feels_like}: <span className="font-semibold text-slate-200">{weather.current.feels_like}°C</span></div>
+                      <div className="text-slate-400">{text.humidity}: <span className="font-semibold text-slate-200">{weather.current.humidity}%</span></div>
+                      <div className="text-slate-400">{text.wind}: <span className="font-semibold text-slate-200">{weather.current.wind_speed} km/h {weather.current.wind_direction}</span></div>
+                      <div className="text-slate-400">{text.precipitation}: <span className="font-semibold text-slate-200">{weather.current.rain_probability}%</span></div>
                     </div>
                   </div>
 
                   {/* Micro dashboard parameters block */}
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-8 pt-6 border-t border-slate-800/80 text-center">
                     <div className="bg-slate-900/60 rounded-xl p-3 border border-slate-800/40">
-                      <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Atm Pressure</p>
+                      <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">{text.atm_pressure}</p>
                       <p className="text-sm font-extrabold text-slate-200 mt-1">{weather.current.pressure} hPa</p>
                     </div>
                     <div className="bg-slate-900/60 rounded-xl p-3 border border-slate-800/40">
-                      <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Visibility</p>
+                      <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">{text.visibility}</p>
                       <p className="text-sm font-extrabold text-slate-200 mt-1">{weather.current.visibility} km</p>
                     </div>
                     <div className="bg-slate-900/60 rounded-xl p-3 border border-slate-800/40">
-                      <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">UV Index</p>
+                      <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">{text.uv_index}</p>
                       <p className="text-sm font-extrabold text-slate-200 mt-1">{weather.current.uv_index}</p>
                     </div>
                     <div className="bg-slate-900/60 rounded-xl p-3 border border-slate-800/40">
-                      <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Air Quality</p>
+                      <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">{text.air_quality}</p>
                       <p className="text-xs font-extrabold text-emerald-400 mt-1 truncate">{weather.current.air_quality}</p>
                     </div>
                   </div>
@@ -984,25 +1320,25 @@ export default function WeatherGPT() {
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800/80 pb-4">
                     <div>
                       <span className="text-[10px] uppercase font-extrabold tracking-wider text-emerald-400">
-                        Active Operating Mode & Persona Advisory
+                        {text.active_operating_mode}
                       </span>
                       <h3 className="text-base font-bold text-white flex items-center gap-2 mt-0.5">
-                        {currentMode === 'farmer' && "🌾 Agro-Meteorological Advisory (Farmer Mode)"}
-                        {currentMode === 'traveller' && "🚗 Highway & Route Safety Advisory (Traveller Mode)"}
-                        {currentMode === 'school' && "🏫 Campus & Outdoor Activity Advisory (School/College Mode)"}
-                        {currentMode === 'disaster' && "🚨 Disaster Operations Directive (Command Mode)"}
-                        {currentMode === 'general' && "👤 General Public Weather Advisory"}
+                        {currentMode === 'farmer' && text.mode_title_farmer}
+                        {currentMode === 'traveller' && text.mode_title_traveller}
+                        {currentMode === 'school' && text.mode_title_school}
+                        {currentMode === 'disaster' && text.mode_title_disaster}
+                        {currentMode === 'general' && text.mode_title_general}
                       </h3>
                     </div>
                     
                     {/* Interactive Mode Pills */}
                     <div className="flex items-center gap-1.5 flex-wrap">
                       {[
-                        { id: 'general', label: '👤 Public', icon: User },
-                        { id: 'farmer', label: '🌾 Farmer', icon: GraduationCap },
-                        { id: 'traveller', label: '🚗 Traveller', icon: Navigation },
-                        { id: 'school', label: '🏫 School', icon: Shield },
-                        { id: 'disaster', label: '🚨 Disaster', icon: AlertTriangle }
+                        { id: 'general', label: text.mode_pill_public, icon: User },
+                        { id: 'farmer', label: text.mode_pill_farmer, icon: GraduationCap },
+                        { id: 'traveller', label: text.mode_pill_traveller, icon: Navigation },
+                        { id: 'school', label: text.mode_pill_school, icon: Shield },
+                        { id: 'disaster', label: text.mode_pill_disaster, icon: AlertTriangle }
                       ].map((m) => (
                         <button
                           key={m.id}
@@ -1023,16 +1359,16 @@ export default function WeatherGPT() {
                   {currentMode === 'farmer' && (
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
                       <div className="bg-emerald-950/20 border border-emerald-500/30 p-3 rounded-xl">
-                        <span className="font-bold text-emerald-400 block mb-1">💧 Irrigation Advisory</span>
-                        <p className="text-slate-300">Rain probability is {weather.current.rain_probability}%. Delay artificial field irrigation for 48 hours to prevent soil waterlogging.</p>
+                        <span className="font-bold text-emerald-400 block mb-1">{text.farmer_irrigation_title}</span>
+                        <p className="text-slate-300">{text.farmer_irrigation_desc}</p>
                       </div>
                       <div className="bg-emerald-950/20 border border-emerald-500/30 p-3 rounded-xl">
-                        <span className="font-bold text-emerald-400 block mb-1">🧪 Spraying & Fertilizers</span>
-                        <p className="text-slate-300">Avoid chemical pesticide spraying today; anticipated rain showers will wash off treatments.</p>
+                        <span className="font-bold text-emerald-400 block mb-1">{text.farmer_spraying_title}</span>
+                        <p className="text-slate-300">{text.farmer_spraying_desc}</p>
                       </div>
                       <div className="bg-emerald-950/20 border border-emerald-500/30 p-3 rounded-xl">
-                        <span className="font-bold text-emerald-400 block mb-1">🌾 Produce Protection</span>
-                        <p className="text-slate-300">Move harvested crops to elevated covered sheds. Verify drainage channels around crop fields.</p>
+                        <span className="font-bold text-emerald-400 block mb-1">{text.farmer_produce_title}</span>
+                        <p className="text-slate-300">{text.farmer_produce_desc}</p>
                       </div>
                     </div>
                   )}
@@ -1040,16 +1376,16 @@ export default function WeatherGPT() {
                   {currentMode === 'traveller' && (
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
                       <div className="bg-amber-950/20 border border-amber-500/30 p-3 rounded-xl">
-                        <span className="font-bold text-amber-400 block mb-1">🛣️ Highway Visibility</span>
-                        <p className="text-slate-300">Visibility is {weather.current.visibility} km. Expect dense mist and fog patches in ghat corridors (Lonavala/Khandala).</p>
+                        <span className="font-bold text-amber-400 block mb-1">{text.traveller_vis_title}</span>
+                        <p className="text-slate-300">{text.traveller_vis_desc}</p>
                       </div>
                       <div className="bg-amber-950/20 border border-amber-500/30 p-3 rounded-xl">
-                        <span className="font-bold text-amber-400 block mb-1">🚘 Hydroplaning Watch</span>
-                        <p className="text-slate-300">Wind velocity {weather.current.wind_speed} km/h with active rain. Reduce speed on wet asphalt curves.</p>
+                        <span className="font-bold text-amber-400 block mb-1">{text.traveller_hydro_title}</span>
+                        <p className="text-slate-300">{text.traveller_hydro_desc}</p>
                       </div>
                       <div className="bg-amber-950/20 border border-amber-500/30 p-3 rounded-xl">
-                        <span className="font-bold text-amber-400 block mb-1">⏰ Recommended Driving Hours</span>
-                        <p className="text-slate-300">Optimal departure window: 6:00 AM to 11:00 AM before heavy afternoon cloudburst build-up.</p>
+                        <span className="font-bold text-amber-400 block mb-1">{text.traveller_hours_title}</span>
+                        <p className="text-slate-300">{text.traveller_hours_desc}</p>
                       </div>
                     </div>
                   )}
@@ -1057,16 +1393,16 @@ export default function WeatherGPT() {
                   {currentMode === 'school' && (
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
                       <div className="bg-cyan-950/20 border border-cyan-500/30 p-3 rounded-xl">
-                        <span className="font-bold text-cyan-400 block mb-1">⚽ Sports & PE Safety</span>
-                        <p className="text-slate-300">Physical education and outdoor ground activities should be moved indoors after 1:00 PM.</p>
+                        <span className="font-bold text-cyan-400 block mb-1">{text.school_sports_title}</span>
+                        <p className="text-slate-300">{text.school_sports_desc}</p>
                       </div>
                       <div className="bg-cyan-950/20 border border-cyan-500/30 p-3 rounded-xl">
-                        <span className="font-bold text-cyan-400 block mb-1">⚡ Lightning Risk Index</span>
-                        <p className="text-slate-300">Cloud-to-ground convective lightning hazard elevated during afternoon hours. Keep students indoors.</p>
+                        <span className="font-bold text-cyan-400 block mb-1">{text.school_lightning_title}</span>
+                        <p className="text-slate-300">{text.school_lightning_desc}</p>
                       </div>
                       <div className="bg-cyan-950/20 border border-cyan-500/30 p-3 rounded-xl">
-                        <span className="font-bold text-cyan-400 block mb-1">🚌 Bus Fleet Transit</span>
-                        <p className="text-slate-300">Coordinate evening dismissal routes early to avoid urban waterlogging hotspots along main arterial roads.</p>
+                        <span className="font-bold text-cyan-400 block mb-1">{text.school_bus_title}</span>
+                        <p className="text-slate-300">{text.school_bus_desc}</p>
                       </div>
                     </div>
                   )}
@@ -1074,23 +1410,23 @@ export default function WeatherGPT() {
                   {currentMode === 'disaster' && (
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
                       <div className="bg-rose-950/20 border border-rose-500/30 p-3 rounded-xl">
-                        <span className="font-bold text-rose-400 block mb-1">🌊 River & Spillway Level</span>
-                        <p className="text-slate-300">Khadakwasla Dam spillway discharge monitored. Low-lying riverbank settlements put on watch.</p>
+                        <span className="font-bold text-rose-400 block mb-1">{text.disaster_river_title}</span>
+                        <p className="text-slate-300">{text.disaster_river_desc}</p>
                       </div>
                       <div className="bg-rose-950/20 border border-rose-500/30 p-3 rounded-xl">
-                        <span className="font-bold text-rose-400 block mb-1">🚒 Emergency Deployment</span>
-                        <p className="text-slate-300">NDRF 5th Battalion rescue teams alerted. Rubber rescue boats positioned at high-risk transit hubs.</p>
+                        <span className="font-bold text-rose-400 block mb-1">{text.disaster_rescue_title}</span>
+                        <p className="text-slate-300">{text.disaster_rescue_desc}</p>
                       </div>
                       <div className="bg-rose-950/20 border border-rose-500/30 p-3 rounded-xl">
-                        <span className="font-bold text-rose-400 block mb-1">📢 Public Directive</span>
-                        <p className="text-slate-300">Issue red alert public notifications for low-lying urban inundation zones. Evacuate basement structures.</p>
+                        <span className="font-bold text-rose-400 block mb-1">{text.disaster_public_title}</span>
+                        <p className="text-slate-300">{text.disaster_public_desc}</p>
                       </div>
                     </div>
                   )}
 
                   {currentMode === 'general' && (
                     <div className="bg-slate-950/50 p-3 rounded-xl text-xs text-slate-300 flex items-center justify-between">
-                      <span>💡 <strong>General Recommendation:</strong> Current condition is {weather.current.condition} with {weather.current.rain_probability}% rain chance. Carry umbrella during afternoon hours.</span>
+                      <span><strong>{text.general_rec_prefix}</strong> {translateCondition(weather.current.condition, currentLang)} ({weather.current.rain_probability}%).</span>
                     </div>
                   )}
                 </div>
@@ -1110,7 +1446,7 @@ export default function WeatherGPT() {
                           }
                         `}
                       >
-                        <p className="text-xs font-bold">{fc.day}</p>
+                        <p className="text-xs font-bold">{translateDay(fc.day, currentLang)}</p>
                         <div className="flex justify-center my-3">{getWeatherIcon(fc.icon)}</div>
                         <p className="text-base font-black text-white">{fc.temp}°C</p>
                         <span className={`inline-block mt-2 px-1.5 py-0.5 rounded text-[8px] font-bold text-white
@@ -1118,7 +1454,7 @@ export default function WeatherGPT() {
                             fc.risk_level === 'HIGH' ? 'bg-orange-500' : 
                             fc.risk_level === 'MODERATE' ? 'bg-amber-500' : 'bg-emerald-500'}
                         `}>
-                          {fc.risk_level}
+                          {translateRiskCategory(fc.risk_level, currentLang)}
                         </span>
                       </button>
                     ))}
@@ -1128,19 +1464,19 @@ export default function WeatherGPT() {
                   {weather.forecast[selectedForecastIndex] && (
                     <div className="mt-6 p-4 rounded-xl bg-slate-900/60 border border-slate-800/60 flex flex-col md:flex-row gap-6 justify-between items-start md:items-center">
                       <div>
-                        <span className="text-[10px] font-extrabold tracking-wider uppercase text-emerald-500">Day Details</span>
+                        <span className="text-[10px] font-extrabold tracking-wider uppercase text-emerald-500">{text.day_details}</span>
                         <h4 className="text-base font-black text-white mt-0.5">
-                          {weather.forecast[selectedForecastIndex].day} — {weather.forecast[selectedForecastIndex].condition}
+                          {translateDay(weather.forecast[selectedForecastIndex].day, currentLang)} — {translateCondition(weather.forecast[selectedForecastIndex].condition, currentLang)}
                         </h4>
                         <p className="text-xs text-slate-400 mt-1 max-w-xl">
-                          <span className="font-bold text-slate-300">AI Advice:</span> {weather.forecast[selectedForecastIndex].recommendation}
+                          <span className="font-bold text-slate-300">{text.ai_advice}</span> {weather.forecast[selectedForecastIndex].recommendation}
                         </p>
                       </div>
                       
                       <div className="flex gap-6 text-xs text-slate-400 border-t md:border-t-0 border-slate-800 pt-3 md:pt-0 w-full md:w-auto">
-                        <div>Rain Prob: <span className="font-bold text-slate-200">{weather.forecast[selectedForecastIndex].rain_probability}%</span></div>
-                        <div>Wind: <span className="font-bold text-slate-200">{weather.forecast[selectedForecastIndex].wind} km/h</span></div>
-                        <div>Humidity: <span className="font-bold text-slate-200">{weather.forecast[selectedForecastIndex].humidity}%</span></div>
+                        <div>{text.rain_prob}: <span className="font-bold text-slate-200">{weather.forecast[selectedForecastIndex].rain_probability}%</span></div>
+                        <div>{text.wind}: <span className="font-bold text-slate-200">{weather.forecast[selectedForecastIndex].wind} km/h</span></div>
+                        <div>{text.humidity}: <span className="font-bold text-slate-200">{weather.forecast[selectedForecastIndex].humidity}%</span></div>
                       </div>
                     </div>
                   )}
@@ -1202,8 +1538,8 @@ export default function WeatherGPT() {
                           
                           {/* Tooltip on Hover */}
                           <div className="absolute -top-16 opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none z-30 bg-slate-900 border border-slate-700 text-slate-100 text-[11px] p-2 rounded-xl shadow-2xl whitespace-nowrap flex flex-col items-center">
-                            <span className="font-bold text-cyan-300">{fc.day}</span>
-                            <span>{fc.condition} • {fc.temp}°C</span>
+                            <span className="font-bold text-cyan-300">{translateDay(fc.day, currentLang)}</span>
+                            <span>{translateCondition(fc.condition, currentLang)} • {fc.temp}°C</span>
                             <span className="text-[10px] text-slate-400">Rain: {fc.rain_probability}% | Wind: {fc.wind} km/h</span>
                           </div>
 
@@ -1233,9 +1569,9 @@ export default function WeatherGPT() {
                           {/* Day & Icon */}
                           <div className="mt-3 flex flex-col items-center">
                             <span className="text-[11px] font-bold text-slate-300 group-hover:text-cyan-400 transition">
-                              {fc.day.substring(0, 3)}
+                              {translateDay(fc.day, currentLang).substring(0, 4)}
                             </span>
-                            <span className="text-[9px] text-slate-500 font-medium truncate max-w-[60px] text-center">{fc.condition}</span>
+                            <span className="text-[9px] text-slate-500 font-medium truncate max-w-[60px] text-center">{translateCondition(fc.condition, currentLang)}</span>
                           </div>
 
                         </div>
@@ -1260,7 +1596,7 @@ export default function WeatherGPT() {
                             risk.category === 'HIGH' ? 'bg-orange-500' : 
                             risk.category === 'MODERATE' ? 'bg-amber-500' : 'bg-emerald-500'}
                         `}>
-                          {risk.category}
+                          {translateRiskCategory(risk.category, currentLang)}
                         </span>
                       </div>
 
@@ -1283,12 +1619,12 @@ export default function WeatherGPT() {
                           {risk.breakdown.length > 0 ? (
                             risk.breakdown.map((item: RiskFactor, idx: number) => (
                               <div key={idx} className="flex justify-between items-center py-1.5 border-b border-slate-800/40">
-                                <span className="text-slate-300">{item.factor}</span>
+                                <span className="text-slate-300">{translateRiskFactor(item.factor, currentLang)}</span>
                                 <span className="font-extrabold text-emerald-400">+{item.weight}</span>
                               </div>
                             ))
                           ) : (
-                            <p className="text-slate-500 italic py-2">No high-risk indicators active.</p>
+                            <p className="text-slate-500 italic py-2">{text.no_risk_indicators}</p>
                           )}
                         </div>
                       </div>
@@ -1340,8 +1676,8 @@ export default function WeatherGPT() {
                 ) : (
                   <div className="bg-slate-900/30 border border-slate-800/80 rounded-2xl p-6 text-center shadow-xl">
                     <CheckCircle2 className="h-8 w-8 mx-auto text-emerald-500" />
-                    <h4 className="font-bold text-slate-300 mt-3">No Active Weather Warnings</h4>
-                    <p className="text-xs text-slate-500 mt-1">Current area is classified as clear by meteorological alerts.</p>
+                    <h4 className="font-bold text-slate-300 mt-3">{text.no_active_warnings}</h4>
+                    <p className="text-xs text-slate-500 mt-1">{text.clear_area_msg}</p>
                   </div>
                 )}
 
