@@ -27,4 +27,4 @@ services:
       - key: PORT
         value: 3000
       - key: NEXT_PUBLIC_API_URL
-        value: https://weathergpt-backend.onrender.com # Replace with your backend's actual Render URL if service name differs
+        value: https://weathergpt-backendnew.onrender.com # Deployed backend URL
