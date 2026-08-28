@@ -33,13 +33,15 @@ KEYWORDS_LANG = {
         "pune": "पुणे",
         "mumbai": "मुंबई",
         "delhi": "दिल्ली",
-        "lonavala": "लोणावळा"
+        "lonavala": "लोणावळा",
+        "nashik": "नाशिक"
     },
     "hi": {
         "pune": "पुणे",
         "mumbai": "मुंबई",
         "delhi": "दिल्ली",
-        "lonavala": "लोनावला"
+        "lonavala": "लोनावला",
+        "nashik": "नाशिक"
     }
 }
 

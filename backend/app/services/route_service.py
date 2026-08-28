@@ -6,7 +6,11 @@ from app.services.risk_service import calculate_weather_risk
 # Standard route definitions
 PREDEFINED_ROUTES = {
     ("pune", "mumbai"): ["Pune", "Lonavala", "Khopoli", "Panvel", "Mumbai"],
-    ("mumbai", "pune"): ["Mumbai", "Panvel", "Khopoli", "Lonavala", "Pune"]
+    ("mumbai", "pune"): ["Mumbai", "Panvel", "Khopoli", "Lonavala", "Pune"],
+    ("pune", "nashik"): ["Pune", "Narayangaon", "Sangamner", "Sinnar", "Nashik"],
+    ("nashik", "pune"): ["Nashik", "Sinnar", "Sangamner", "Narayangaon", "Pune"],
+    ("mumbai", "nashik"): ["Mumbai", "Thane", "Kalyan", "Igatpuri", "Nashik"],
+    ("nashik", "mumbai"): ["Nashik", "Igatpuri", "Kalyan", "Thane", "Mumbai"]
 }
 
 def analyze_route_weather(db: Session, from_location: str, to_location: str) -> Dict[str, Any]:

@@ -4,6 +4,7 @@ router = APIRouter(prefix="/location", tags=["location"])
 
 LOCATION_REGISTRY = [
     {"name": "Pune", "state": "Maharashtra", "country": "India", "lat": 18.5204, "lon": 73.8567, "type": "City"},
+    {"name": "Nashik", "state": "Maharashtra", "country": "India", "lat": 19.9975, "lon": 73.7898, "type": "Major City"},
     {"name": "Wagholi", "state": "Maharashtra", "country": "India", "lat": 18.5793, "lon": 73.9822, "type": "Subarea"},
     {"name": "Lonavala", "state": "Maharashtra", "country": "India", "lat": 18.7557, "lon": 73.4091, "type": "Hill Station"},
     {"name": "Mumbai", "state": "Maharashtra", "country": "India", "lat": 19.0760, "lon": 72.8777, "type": "Metropolis"},

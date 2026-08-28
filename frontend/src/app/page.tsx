@@ -817,6 +817,7 @@ export default function WeatherGPT() {
                   )}
                   <option value="Pune">Pune, MH</option>
                   <option value="Mumbai">Mumbai, MH</option>
+                  <option value="Nashik">Nashik, MH</option>
                   <option value="Lonavala">Lonavala (Ghats)</option>
                   <option value="Khopoli">Khopoli, MH</option>
                   <option value="Panvel">Panvel, MH</option>

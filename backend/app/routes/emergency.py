@@ -81,6 +81,19 @@ EMERGENCY_LOCATIONS_DATA = [
         "lon": 72.8478,
         "is_open_24x7": True,
         "distance_km": "140.0"
+    },
+    {
+        "id": "loc-7",
+        "name": "Nashik District Civil Hospital & Emergency Disaster Hub",
+        "category": "Hospital",
+        "city": "Nashik",
+        "address": "Trimbak Road, Near CBS, Nashik",
+        "phone": "+91-253-2578100",
+        "capacity": "150 beds, ICU & Rapid Response Unit",
+        "lat": 19.9975,
+        "lon": 73.7898,
+        "is_open_24x7": True,
+        "distance_km": "165.0"
     }
 ]
 

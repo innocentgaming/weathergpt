@@ -10,6 +10,7 @@ from app.models.models import WeatherCache, OfficialAlert
 DEMO_COORDINATES = {
     "pune": {"lat": 18.5204, "lon": 73.8567, "state": "Maharashtra"},
     "mumbai": {"lat": 19.0760, "lon": 72.8777, "state": "Maharashtra"},
+    "nashik": {"lat": 19.9975, "lon": 73.7898, "state": "Maharashtra"},
     "delhi": {"lat": 28.7041, "lon": 77.1025, "state": "Delhi"},
     "bengaluru": {"lat": 12.9716, "lon": 77.5946, "state": "Karnataka"},
     "chennai": {"lat": 13.0827, "lon": 80.2707, "state": "Tamil Nadu"},
@@ -21,6 +22,115 @@ DEMO_COORDINATES = {
 
 # High-fidelity mock weather data for DEMO MODE or fallback
 MOCK_WEATHER_DATA = {
+    "nashik": {
+        "location": "Nashik, Maharashtra",
+        "coordinates": {"lat": 19.9975, "lon": 73.7898},
+        "current": {
+            "temp": 26.0,
+            "feels_like": 28.0,
+            "condition": "Moderate Rain",
+            "icon": "cloud-rain",
+            "humidity": 82,
+            "wind_speed": 16.0,
+            "wind_direction": "SW",
+            "pressure": 1008,
+            "visibility": 7.0,
+            "uv_index": 4,
+            "rain_probability": 65,
+            "air_quality": "Good (AQI 42)",
+            "sunrise": "06:12 AM",
+            "sunset": "06:55 PM",
+            "source": "India Meteorological Department (IMD) - Demo Mode",
+            "updated_at": ""
+        },
+        "forecast": [
+            {
+                "day": "Today",
+                "temp": 26,
+                "condition": "Moderate Rain",
+                "icon": "cloud-rain",
+                "rain_probability": 65,
+                "wind": 16,
+                "humidity": 82,
+                "risk_level": "MODERATE",
+                "recommendation": "Intermittent rainfall expected across Nashik. Good conditions for grape agriculture."
+            },
+            {
+                "day": "Tomorrow",
+                "temp": 25,
+                "condition": "Light Drizzle",
+                "icon": "cloud-drizzle",
+                "rain_probability": 45,
+                "wind": 14,
+                "humidity": 78,
+                "risk_level": "LOW",
+                "recommendation": "Mild drizzle forecast in the afternoon. Safe for commute."
+            },
+            {
+                "day": "Day 3",
+                "temp": 27,
+                "condition": "Partly Cloudy",
+                "icon": "sun",
+                "rain_probability": 20,
+                "wind": 12,
+                "humidity": 70,
+                "risk_level": "LOW",
+                "recommendation": "Clearing skies. Excellent weather for agricultural spraying and travel."
+            },
+            {
+                "day": "Day 4",
+                "temp": 28,
+                "condition": "Partly Cloudy",
+                "icon": "sun",
+                "rain_probability": 15,
+                "wind": 10,
+                "humidity": 68,
+                "risk_level": "LOW",
+                "recommendation": "Pleasant conditions across Godavari river basin."
+            },
+            {
+                "day": "Day 5",
+                "temp": 29,
+                "condition": "Sunny",
+                "icon": "sun",
+                "rain_probability": 10,
+                "wind": 11,
+                "humidity": 65,
+                "risk_level": "LOW",
+                "recommendation": "Warm sunny intervals. Ensure adequate hydration."
+            },
+            {
+                "day": "Day 6",
+                "temp": 27,
+                "condition": "Light Rain",
+                "icon": "cloud-rain",
+                "rain_probability": 50,
+                "wind": 15,
+                "humidity": 80,
+                "risk_level": "LOW",
+                "recommendation": "Passing rain showers forecast along Nashik valley."
+            },
+            {
+                "day": "Day 7",
+                "temp": 26,
+                "condition": "Moderate Rain",
+                "icon": "cloud-rain",
+                "rain_probability": 60,
+                "wind": 17,
+                "humidity": 84,
+                "risk_level": "MODERATE",
+                "recommendation": "Overcast weather with continuous light to moderate rain showers."
+            }
+        ],
+        "alerts": [
+            {
+                "title": "Yellow Advisory: Intermittent Spells in Nashik District",
+                "expected_period": "Next 24 Hours",
+                "impacts": ["Moderate rain causing water pooling near Panchavati ghats", "Slight visibility reduction on NH-60"],
+                "actions": ["Drive cautious on Kasara ghat section", "Farmers advised to inspect vineyard drainage"]
+            }
+        ]
+    },
     "pune": {
         "location": "Pune, Maharashtra",
         "coordinates": {"lat": 18.5204, "lon": 73.8567},
@@ -458,6 +568,8 @@ def normalize_city_name(city: str) -> str:
         return "khopoli"
     elif "panvel" in cleaned:
         return "panvel"
+    elif "nashik" in cleaned or "nasik" in cleaned:
+        return "nashik"
     return cleaned
 
 
