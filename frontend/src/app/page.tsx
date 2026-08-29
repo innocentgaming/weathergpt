@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import dynamic from 'next/dynamic';
+import Link from 'next/link';
 import { 
   CloudRain, Sun, Moon, Cloud, CloudLightning, Wind, Compass, 
   Navigation, AlertTriangle, Shield, 
@@ -276,7 +277,11 @@ export default function WeatherGPT() {
       const savedUser = localStorage.getItem('weathergpt_user');
       if (savedUser) {
         try {
-          setCurrentUser(JSON.parse(savedUser));
+          const parsedUser = JSON.parse(savedUser);
+          setCurrentUser(parsedUser);
+          if (parsedUser.role) {
+            setCurrentMode(parsedUser.role);
+          }
         } catch (e) {
           console.error(e);
         }
@@ -288,6 +293,11 @@ export default function WeatherGPT() {
           role: "general",
           isGuest: true
         });
+      }
+
+      const savedMode = localStorage.getItem('weathergpt_mode');
+      if (savedMode && ['general', 'traveller', 'farmer', 'disaster', 'school'].includes(savedMode)) {
+        setCurrentMode(savedMode as any);
       }
 
       const win = window as unknown as SpeechRecognitionWindow;
@@ -309,12 +319,24 @@ export default function WeatherGPT() {
   const handleUserLogin = (user: UserProfile) => {
     setCurrentUser(user);
     localStorage.setItem('weathergpt_user', JSON.stringify(user));
-    setCurrentMode(user.role);
+    if (user.role) {
+      setCurrentMode(user.role);
+      localStorage.setItem('weathergpt_mode', user.role);
+    }
   };
 
   const handleUserLogout = () => {
-    setCurrentUser(null);
+    const guestUser: UserProfile = {
+      name: "Guest Explorer",
+      email: "guest@weathergpt.local",
+      role: "general",
+      isGuest: true
+    };
+    setCurrentUser(guestUser);
+    setCurrentMode('general');
     localStorage.removeItem('weathergpt_user');
+    localStorage.removeItem('weathergpt_token');
+    localStorage.setItem('weathergpt_mode', 'general');
   };
 
   // Fetch weather data function

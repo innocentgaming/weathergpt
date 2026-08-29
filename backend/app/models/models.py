@@ -41,5 +41,14 @@ class OfficialAlert(Base):
     description = Column(Text, nullable=False)
     expected_period = Column(String(100), nullable=True)
     impacts = Column(Text, nullable=True)  # JSON list
-    actions = Column(Text, nullable=True)  # JSON list
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String(120), unique=True, index=True, nullable=False)
+    hashed_password = Column(String(200), nullable=False)
+    name = Column(String(100), nullable=False)
+    role = Column(String(50), default="general", nullable=False)  # 'general', 'traveller', 'farmer', 'disaster', 'school'
     created_at = Column(DateTime, default=datetime.utcnow)

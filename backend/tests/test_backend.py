@@ -118,11 +118,51 @@ def test_report():
     assert res.status_code == 200
     assert "executive_summary" in res.json()
 
+def test_auth():
+    import time
+    test_email = f"test_{int(time.time())}@weathergpt.local"
+    
+    # 1. Test Register
+    reg_res = client.post("/api/auth/register", json={
+        "email": test_email,
+        "password": "Password123!",
+        "name": "Kisan Demo",
+        "role": "farmer"
+    })
+    assert reg_res.status_code == 201
+    reg_data = reg_res.json()
+    assert reg_data["success"] is True
+    assert reg_data["user"]["email"] == test_email
+    assert reg_data["user"]["role"] == "farmer"
+    assert "token" in reg_data
+
+    # 2. Test Login
+    login_res = client.post("/api/auth/login", json={
+        "email": test_email,
+        "password": "Password123!"
+    })
+    assert login_res.status_code == 200
+    login_data = login_res.json()
+    assert login_data["success"] is True
+    token = login_data["token"]
+
+    # 3. Test Me
+    me_res = client.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
+    assert me_res.status_code == 200
+    assert me_res.json()["user"]["email"] == test_email
+
+    # 4. Test Guest Login
+    guest_res = client.post("/api/auth/guest", json={"role": "traveller"})
+    assert guest_res.status_code == 200
+    assert guest_res.json()["user"]["is_guest"] is True
+
 if __name__ == "__main__":
     print("Running WeatherGPT Backend Integration Tests...")
     try:
         test_root()
         print("[OK] Root endpoint working")
+        test_auth()
+        print("[OK] User Authentication (Register, Login, Guest, Me) working")
         test_current_weather()
         print("[OK] Current weather & risk engine working")
         test_forecast()

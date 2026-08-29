@@ -210,6 +210,27 @@ export const LOCALIZATION = {
     report_summary: "Executive Summary",
     report_recommendations: "Actionable Directives",
 
+    // Auth & Login
+    auth_signin_title: "Sign In to WeatherGPT",
+    auth_signin_sub: "Access personalized meteorology advisories & real-time risk intelligence",
+    auth_register_title: "Create WeatherGPT Account",
+    auth_register_sub: "Tailor weather risk engine to your specific operational persona",
+    auth_tab_signin: "Sign In",
+    auth_tab_register: "Register",
+    auth_tab_guest: "1-Click Guest",
+    auth_email_label: "Email Address",
+    auth_password_label: "Password",
+    auth_name_label: "Full Name / Organization",
+    auth_role_label: "Select Your Operational Persona:",
+    auth_btn_signin: "Sign In to Account",
+    auth_btn_register: "Create Free Account",
+    auth_btn_guest: "Continue as Guest Explorer",
+    auth_back_to_dashboard: "← Back to Live Dashboard",
+    auth_dont_have_account: "Don't have an account?",
+    auth_already_have_account: "Already have an account?",
+    auth_signing_in: "Signing in...",
+    auth_creating_account: "Creating account...",
+
     // Disclaimer
     disclaimer: "WeatherGPT provides AI-assisted insights based on available weather feeds. For emergencies, always follow instructions from authorized government and emergency management authorities."
   },
@@ -420,6 +441,27 @@ export const LOCALIZATION = {
     report_summary: "कार्यकारी सारांश",
     report_recommendations: "कार्रवाई योग्य निर्देश",
 
+    // Auth & Login
+    auth_signin_title: "वेदरजीपीटी में साइन इन करें",
+    auth_signin_sub: "व्यक्तिगत मौसम सलाह और वास्तविक समय जोखिम चेतावनी प्राप्त करें",
+    auth_register_title: "वेदरजीपीटी खाता बनाएं",
+    auth_register_sub: "मौसम जोखिम इंजन को अपने विशिष्ट कार्य प्रोफ़ाइल के अनुसार सेट करें",
+    auth_tab_signin: "साइन इन",
+    auth_tab_register: "पंजीकरण",
+    auth_tab_guest: "1-क्लिक अतिथि",
+    auth_email_label: "ईमेल पता",
+    auth_password_label: "पासवर्ड",
+    auth_name_label: "पूरा नाम / संगठन",
+    auth_role_label: "अपनी कार्यकारी प्रोफ़ाइल चुनें:",
+    auth_btn_signin: "खाते में साइन इन करें",
+    auth_btn_register: "निःशुल्क खाता बनाएं",
+    auth_btn_guest: "अतिथि के रूप में जारी रखें",
+    auth_back_to_dashboard: "← मुख्य डैशबोर्ड पर लौटें",
+    auth_dont_have_account: "क्या आपका खाता नहीं है?",
+    auth_already_have_account: "पहले से खाता है?",
+    auth_signing_in: "साइन इन हो रहा है...",
+    auth_creating_account: "खाता बनाया जा रहा है...",
+
     // Disclaimer
     disclaimer: "वेदरजीपीटी उपलब्ध डेटा के आधार पर एआई-जनरेटेड इनसाइट्स प्रदान करता है। आपातकालीन स्थितियों में हमेशा आधिकारिक सरकारी निर्देशों का पालन करें।"
   },
@@ -629,6 +671,27 @@ export const LOCALIZATION = {
     report_export_as: "अहवाल दस्तऐवज डाउनलोड करा:",
     report_summary: "कार्यकारी सारांश",
     report_recommendations: "कृतीयोग्य निर्देश",
+
+    // Auth & Login
+    auth_signin_title: "वेदरजीपीटी मध्ये साइन इन करा",
+    auth_signin_sub: "वैयक्तिकृत हवामान सल्ला व थेट जोखीम इशारे मिळवा",
+    auth_register_title: "वेदरजीपीटी खाते तयार करा",
+    auth_register_sub: "हवामान जोखीम प्रणाली आपल्या कार्य प्रोफाइलनुसार जुळवा",
+    auth_tab_signin: "साइन इन",
+    auth_tab_register: "नोंदणी करा",
+    auth_tab_guest: "१-क्लिक पाहुणे",
+    auth_email_label: "ईमेल पत्ता",
+    auth_password_label: "पासवर्ड",
+    auth_name_label: "पूर्ण नाव / संस्था",
+    auth_role_label: "आपली कार्यकारी प्रोफाइल निवडा:",
+    auth_btn_signin: "खात्यात साइन इन करा",
+    auth_btn_register: "विनामूल्य खाते तयार करा",
+    auth_btn_guest: "पाहुणे म्हणून पुढे जा",
+    auth_back_to_dashboard: "← मुख्य डॅशबोर्डवर परत जा",
+    auth_dont_have_account: "खाते नाही का?",
+    auth_already_have_account: "आधीच खाते आहे का?",
+    auth_signing_in: "साइन इन होत आहे...",
+    auth_creating_account: "खाते तयार होत आहे...",
 
     // Disclaimer
     disclaimer: "वेदरजीपीटी उपलब्ध डेटाच्या आधारे एआय-जनरेटेड इनसाइट्स प्रदान करते. आपत्कालीन परिस्थितीत नेहमी अधिकृत सरकारी सूचनांचे पालन करा."
