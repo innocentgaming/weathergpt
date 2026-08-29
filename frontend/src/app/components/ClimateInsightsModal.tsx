@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { TrendingUp, BarChart3, X, CloudRain, Thermometer } from 'lucide-react';
+import { TrendingUp, BarChart3, X, CloudRain, Thermometer, Sparkles } from 'lucide-react';
+import { LOCALIZATION, SupportedLanguage } from '../i18n';
 
 interface MonthlyAvg {
   month: string;
@@ -33,10 +34,28 @@ interface ClimateInsightsModalProps {
   isOpen: boolean;
   onClose: () => void;
   location?: string;
+  lang?: SupportedLanguage;
 }
 
-export default function ClimateInsightsModal({ isOpen, onClose, location = "Pune" }: ClimateInsightsModalProps) {
+export default function ClimateInsightsModal({ isOpen, onClose, location = "Pune", lang = 'en' }: ClimateInsightsModalProps) {
   const [data, setData] = useState<ClimateData | null>(null);
+  const t = LOCALIZATION[lang] || LOCALIZATION.en;
+
+  const translateMonthName = (m: string) => {
+    const monthMapHi: Record<string, string> = {
+      "Jan": "जनवरी", "Feb": "फरवरी", "Mar": "मार्च", "Apr": "अप्रैल",
+      "May": "मई", "Jun": "जून", "Jul": "जुलाई", "Aug": "अगस्त",
+      "Sep": "सितंबर", "Oct": "अक्टूबर", "Nov": "नवंबर", "Dec": "दिसंबर"
+    };
+    const monthMapMr: Record<string, string> = {
+      "Jan": "जानेवारी", "Feb": "फेब्रुवारी", "Mar": "मार्च", "Apr": "एप्रिल",
+      "May": "मे", "Jun": "जून", "Jul": "जुलै", "Aug": "ऑगस्ट",
+      "Sep": "सप्टेंबर", "Oct": "ऑक्टोबर", "Nov": "नोव्हेंबर", "Dec": "डिसेंबर"
+    };
+    if (lang === 'hi') return monthMapHi[m] || m;
+    if (lang === 'mr') return monthMapMr[m] || m;
+    return m;
+  };
 
   useEffect(() => {
     if (!isOpen) return;
@@ -46,7 +65,7 @@ export default function ClimateInsightsModal({ isOpen, onClose, location = "Pune
       .catch(() => {
         // Fallback
         setData({
-          location: "Pune, Maharashtra",
+          location: `${location}, Maharashtra`,
           historical_avg_temp: 26.5,
           historical_avg_rainfall_mm: 722,
           monthly_averages: [
@@ -58,31 +77,32 @@ export default function ClimateInsightsModal({ isOpen, onClose, location = "Pune
             { month: "Jun", temp_c: 27.5, rainfall_mm: 165 },
             { month: "Jul", temp_c: 25.1, rainfall_mm: 210 },
             { month: "Aug", temp_c: 24.8, rainfall_mm: 185 },
-            { month: "Sep", temp_c: 25.3, rainfall_mm: 130 },
-            { month: "Oct", temp_c: 26.0, rainfall_mm: 68 },
-            { month: "Nov", temp_c: 23.2, rainfall_mm: 18 },
-            { month: "Dec", temp_c: 20.8, rainfall_mm: 5 }
+            { month: "Sep", temp_c: 25.3, rainfall_mm: 95 },
+            { month: "Oct", temp_c: 25.9, rainfall_mm: 28 },
+            { month: "Nov", temp_c: 23.2, rainfall_mm: 8 },
+            { month: "Dec", temp_c: 21.0, rainfall_mm: 3 }
           ],
           yearly_trends: [
-            { year: 2020, avg_temp: 26.2, extreme_rain_days: 12, max_temp: 40.2 },
-            { year: 2021, avg_temp: 26.4, extreme_rain_days: 15, max_temp: 40.8 },
-            { year: 2022, avg_temp: 26.7, extreme_rain_days: 18, max_temp: 41.5 },
-            { year: 2023, avg_temp: 27.0, extreme_rain_days: 16, max_temp: 42.1 },
-            { year: 2024, avg_temp: 27.3, extreme_rain_days: 21, max_temp: 42.6 },
-            { year: 2025, avg_temp: 27.5, extreme_rain_days: 24, max_temp: 43.0 }
+            { year: 2020, avg_temp: 26.3, extreme_rain_days: 4, max_temp: 39.2 },
+            { year: 2021, avg_temp: 26.6, extreme_rain_days: 6, max_temp: 39.8 },
+            { year: 2022, avg_temp: 26.9, extreme_rain_days: 7, max_temp: 40.5 },
+            { year: 2023, avg_temp: 27.1, extreme_rain_days: 9, max_temp: 41.2 },
+            { year: 2024, avg_temp: 27.4, extreme_rain_days: 11, max_temp: 42.0 }
           ],
           anomalies: {
-            temp_anomaly_celsius: "+1.0°C above 30-year mean",
-            rainfall_shift: "+18% intense monsoon spells",
-            summary: "Pune has experienced a gradual +1.0°C warming trend over recent decades, with monsoon rainfall exhibiting higher intensity over shorter spans."
+            temp_anomaly_celsius: "+1.2°C",
+            rainfall_shift: "+14%",
+            summary: lang === 'hi'
+              ? "दशकीय विश्लेषण से मानसून की शुरुआत में उच्च तीव्रता वर्षा घटनाओं में 14% की वृद्धि का पता चलता है।"
+              : lang === 'mr'
+              ? "दशकीय विश्लेषणावरून पावसाळ्याच्या सुरुवातीला अतिवृष्टीच्या घटनांमध्ये १४% वाढ दिसून येत आहे."
+              : "Decadal trends indicate a 14% increase in high-intensity convective rainfall episodes during monsoon onset."
           }
         });
       });
-  }, [isOpen, location]);
+  }, [isOpen, location, lang]);
 
   if (!isOpen) return null;
-
-  const maxRain = data ? Math.max(...data.monthly_averages.map(m => m.rainfall_mm), 1) : 1;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-md">
@@ -90,86 +110,104 @@ export default function ClimateInsightsModal({ isOpen, onClose, location = "Pune
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-800 bg-slate-950/80 px-6 py-4">
           <div className="flex items-center gap-3">
-            <div className="rounded-xl bg-cyan-500/20 p-2 text-cyan-400 border border-cyan-500/30">
-              <TrendingUp className="h-6 w-6 animate-pulse" />
+            <div className="rounded-xl bg-cyan-500/20 p-2.5 text-cyan-400 border border-cyan-500/30">
+              <TrendingUp className="h-6 w-6" />
             </div>
             <div>
-              <h2 className="font-bold text-lg text-slate-100">Climate Intelligence &amp; Historical Trends</h2>
-              <p className="text-xs text-slate-400">30-Year Climatological Averages &amp; Temperature Shift Analysis</p>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="font-black text-lg text-slate-100">
+                  {t.climate_modal_title}
+                </h2>
+                <span className="px-2.5 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 flex items-center gap-1">
+                  <Sparkles className="h-3 w-3" />
+                  {t.badge_climate_analytics}
+                </span>
+              </div>
+              <p className="text-xs text-slate-400 mt-0.5">{t.climate_modal_sub} • {location}</p>
             </div>
           </div>
-          <button onClick={onClose} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-800 hover:text-white">
+          <button 
+            onClick={onClose} 
+            className="rounded-lg p-2 text-slate-400 hover:bg-slate-800 hover:text-white transition cursor-pointer"
+            aria-label="Close"
+          >
             <X className="h-5 w-5" />
           </button>
         </div>
 
         {/* Body */}
-        {data && (
-          <div className="p-6 overflow-y-auto space-y-6 flex-1">
-            {/* Top Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <div className="bg-slate-950/60 p-3.5 rounded-xl border border-slate-800">
-                <span className="text-xs text-slate-400 flex items-center gap-1.5">
-                  <Thermometer className="h-3.5 w-3.5 text-amber-400" />
-                  30-Yr Mean Temp
-                </span>
-                <p className="text-xl font-bold text-slate-100 mt-1">{data.historical_avg_temp}°C</p>
+        <div className="p-6 overflow-y-auto space-y-6 flex-1">
+          {data ? (
+            <>
+              {/* Baseline Summary Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="p-4 rounded-xl border border-slate-800 bg-slate-950/60 shadow-sm">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-1">
+                    {t.climate_avg_temp}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <Thermometer className="h-5 w-5 text-amber-400" />
+                    <span className="text-xl font-black text-slate-100">{data.historical_avg_temp}°C</span>
+                  </div>
+                </div>
+
+                <div className="p-4 rounded-xl border border-slate-800 bg-slate-950/60 shadow-sm">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-1">
+                    {t.climate_avg_rain}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <CloudRain className="h-5 w-5 text-cyan-400" />
+                    <span className="text-xl font-black text-slate-100">{data.historical_avg_rainfall_mm} mm</span>
+                  </div>
+                </div>
+
+                <div className="p-4 rounded-xl border border-cyan-500/30 bg-cyan-950/20 shadow-sm">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-cyan-400 block mb-1">
+                    {t.climate_anomaly_title}
+                  </span>
+                  <span className="text-xl font-black text-cyan-300">
+                    {data.anomalies.temp_anomaly_celsius} / {data.anomalies.rainfall_shift}
+                  </span>
+                </div>
               </div>
 
-              <div className="bg-slate-950/60 p-3.5 rounded-xl border border-slate-800">
-                <span className="text-xs text-slate-400 flex items-center gap-1.5">
-                  <CloudRain className="h-3.5 w-3.5 text-cyan-400" />
-                  Annual Precip
-                </span>
-                <p className="text-xl font-bold text-slate-100 mt-1">{data.historical_avg_rainfall_mm} mm</p>
+              {/* Anomaly Callout */}
+              <div className="p-4 rounded-xl border border-cyan-500/30 bg-cyan-950/20 text-xs text-cyan-200 shadow-sm">
+                <span className="font-black text-cyan-400 block mb-1">💡 {t.climate_anomaly_title}:</span>
+                <p className="leading-relaxed font-medium">{data.anomalies.summary}</p>
               </div>
 
-              <div className="bg-slate-950/60 p-3.5 rounded-xl border border-slate-800">
-                <span className="text-xs text-slate-400 flex items-center gap-1.5">
-                  <TrendingUp className="h-3.5 w-3.5 text-rose-400" />
-                  Temp Anomaly
-                </span>
-                <p className="text-sm font-bold text-rose-400 mt-1">{data.anomalies.temp_anomaly_celsius}</p>
-              </div>
-            </div>
-
-            {/* Monthly Precipitation Bar Visualizer */}
-            <div className="bg-slate-950/60 p-4 rounded-xl border border-slate-800 space-y-3">
-              <h3 className="text-xs font-bold text-slate-300 flex items-center gap-2">
-                <BarChart3 className="h-4 w-4 text-cyan-400" />
-                Monthly Rainfall Profile ({data.location})
-              </h3>
-              <div className="grid grid-cols-12 gap-1.5 items-end h-36 pt-4">
-                {data.monthly_averages.map((m) => {
-                  const pct = Math.round((m.rainfall_mm / maxRain) * 100);
-                  return (
-                    <div key={m.month} className="flex flex-col items-center gap-1 h-full justify-end">
-                      <span className="text-[10px] text-cyan-300 font-bold">{m.rainfall_mm > 0 ? m.rainfall_mm : ''}</span>
-                      <div
-                        style={{ height: `${Math.max(pct, 4)}%` }}
-                        className="w-full bg-gradient-to-t from-cyan-600 to-sky-400 rounded-t transition-all"
-                        title={`${m.month}: ${m.rainfall_mm}mm, ${m.temp_c}°C`}
-                      />
-                      <span className="text-[10px] text-slate-400 font-semibold">{m.month}</span>
+              {/* Monthly Climatology Grid */}
+              <div>
+                <h4 className="text-xs font-black text-slate-200 mb-3 flex items-center gap-2">
+                  <BarChart3 className="h-4 w-4 text-cyan-400" />
+                  {t.climate_monthly_avg}
+                </h4>
+                <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                  {data.monthly_averages.map((m, idx) => (
+                    <div key={idx} className="p-3 rounded-xl border border-slate-800 bg-slate-950/60 text-center shadow-sm">
+                      <p className="text-xs font-black text-cyan-400">{translateMonthName(m.month)}</p>
+                      <p className="text-sm font-black text-slate-100 mt-1">{m.temp_c}°C</p>
+                      <p className="text-[10px] text-slate-400 font-bold mt-0.5">{m.rainfall_mm} mm</p>
                     </div>
-                  );
-                })}
+                  ))}
+                </div>
               </div>
+            </>
+          ) : (
+            <div className="flex items-center justify-center h-48 text-slate-400 text-xs font-bold">
+              Loading climate analytics...
             </div>
-
-            {/* Climate Summary */}
-            <div className="bg-cyan-950/20 border border-cyan-500/30 p-4 rounded-xl text-xs text-cyan-200">
-              <span className="font-bold text-cyan-300 block mb-1">🌍 AI Climatological Summary:</span>
-              {data.anomalies.summary}
-            </div>
-          </div>
-        )}
+          )}
+        </div>
 
         {/* Footer */}
-        <div className="border-t border-slate-800 bg-slate-950/80 px-6 py-3 flex items-center justify-between text-xs text-slate-400">
-          <span>Climatological Baseline — Open-Meteo &amp; IMD Historical Archive</span>
-          <button onClick={onClose} className="bg-slate-800 hover:bg-slate-700 text-white font-bold px-4 py-1.5 rounded-lg">
-            Close
+        <div className="border-t border-slate-800 bg-slate-950/80 px-6 py-4 flex justify-end">
+          <button
+            onClick={onClose}
+            className="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-white transition cursor-pointer"
+          >
+            {t.close_btn}
           </button>
         </div>
       </div>

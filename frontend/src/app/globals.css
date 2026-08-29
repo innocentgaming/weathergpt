@@ -17,7 +17,10 @@ body {
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-/* Base Light Mode Layout Adjustments */
+/* =========================================================================
+   LIGHT MODE COMPREHENSIVE STYLING & HIGH CONTRAST
+   ========================================================================= */
+
 .light-mode .bg-slate-950,
 .light-mode main {
   background-color: #f8fafc !important;
@@ -26,13 +29,13 @@ body {
 .light-mode aside {
   background-color: #ffffff !important;
   border-color: #e2e8f0 !important;
-  box-shadow: 2px 0 12px rgba(0, 0, 0, 0.03) !important;
+  box-shadow: 2px 0 12px rgba(0, 0, 0, 0.04) !important;
 }
 
 .light-mode header {
   background-color: #ffffff !important;
   border-color: #e2e8f0 !important;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03) !important;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04) !important;
 }
 
 .light-mode footer {
@@ -43,6 +46,7 @@ body {
 
 /* Light mode card containers */
 .light-mode .bg-slate-900\/60,
+.light-mode .bg-slate-900\/55,
 .light-mode .bg-slate-900\/50,
 .light-mode .bg-slate-900\/40,
 .light-mode .bg-slate-900\/30,
@@ -51,15 +55,36 @@ body {
 .light-mode .bg-slate-900 {
   background-color: #ffffff !important;
   border-color: #e2e8f0 !important;
-  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05), 0 2px 6px -1px rgba(0, 0, 0, 0.03) !important;
+  box-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.05), 0 2px 6px -1px rgba(0, 0, 0, 0.03) !important;
 }
 
-.light-mode .bg-slate-950\/60,
-.light-mode .bg-slate-950\/40,
 .light-mode .bg-slate-950\/80,
+.light-mode .bg-slate-950\/60,
+.light-mode .bg-slate-950\/50,
+.light-mode .bg-slate-950\/40,
+.light-mode .bg-slate-950\/30,
 .light-mode .bg-slate-950 {
   background-color: #f1f5f9 !important;
   border-color: #cbd5e1 !important;
+}
+
+/* Light mode buttons & interactive states */
+.light-mode .bg-slate-800,
+.light-mode .bg-slate-800\/90,
+.light-mode .bg-slate-800\/80,
+.light-mode .bg-slate-800\/60,
+.light-mode .bg-slate-800\/50,
+.light-mode .bg-slate-800\/40,
+.light-mode .bg-slate-800\/30 {
+  background-color: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+  color: #1e293b !important;
+}
+
+.light-mode .bg-slate-800\/50:hover,
+.light-mode .bg-slate-800:hover {
+  background-color: #e2e8f0 !important;
+  color: #0f172a !important;
 }
 
 /* Light mode text colors */
@@ -72,10 +97,25 @@ body {
 
 .light-mode .text-slate-400,
 .light-mode .text-slate-500 {
-  color: #64748b !important;
+  color: #475569 !important;
 }
 
-/* Ensure background clip text gradients stay crisp in light mode */
+/* Fix text inside colored buttons to remain white */
+.light-mode .bg-emerald-500 .text-white,
+.light-mode .bg-emerald-600 .text-white,
+.light-mode .bg-blue-600 .text-white,
+.light-mode .bg-rose-600 .text-white,
+.light-mode .bg-red-500 .text-white,
+.light-mode .bg-orange-500 .text-white,
+.light-mode .bg-amber-500 .text-white,
+.light-mode button.bg-emerald-500,
+.light-mode button.bg-emerald-600,
+.light-mode button.bg-blue-600,
+.light-mode button.bg-rose-600 {
+  color: #ffffff !important;
+}
+
+/* Gradients text in light mode */
 .light-mode .bg-clip-text {
   color: #0f172a !important;
   background-clip: border-box !important;
@@ -87,7 +127,7 @@ body {
 .light-mode input[type="text"],
 .light-mode input[type="email"],
 .light-mode input[type="password"] {
-  background-color: #f1f5f9 !important;
+  background-color: #f8fafc !important;
   color: #0f172a !important;
   border-color: #cbd5e1 !important;
 }
@@ -103,46 +143,67 @@ body {
 .light-mode .border-slate-800\/60,
 .light-mode .border-slate-800\/40,
 .light-mode .border-slate-900,
-.light-mode .border-slate-900\/60 {
+.light-mode .border-slate-900\/60,
+.light-mode .border-slate-700 {
   border-color: #e2e8f0 !important;
 }
 
-.light-mode .bg-slate-800,
-.light-mode .bg-slate-800\/40,
-.light-mode .bg-slate-800\/60,
-.light-mode .bg-slate-800\/80 {
-  background-color: #e2e8f0 !important;
-  color: #1e293b !important;
-}
-
 /* Advisory tint cards in light mode */
-.light-mode .bg-emerald-950\/20 {
+.light-mode .bg-emerald-950\/20,
+.light-mode .bg-emerald-950\/30 {
   background-color: #ecfdf5 !important;
   border-color: #a7f3d0 !important;
 }
 .light-mode .bg-emerald-950\/20 p,
-.light-mode .bg-emerald-950\/20 span {
+.light-mode .bg-emerald-950\/20 span,
+.light-mode .bg-emerald-950\/30 p,
+.light-mode .bg-emerald-950\/30 span {
   color: #065f46 !important;
 }
 
-.light-mode .bg-amber-950\/20 {
+.light-mode .bg-amber-950\/20,
+.light-mode .bg-amber-950\/30 {
   background-color: #fffbeb !important;
   border-color: #fde68a !important;
 }
 .light-mode .bg-amber-950\/20 p,
-.light-mode .bg-amber-950\/20 span {
+.light-mode .bg-amber-950\/20 span,
+.light-mode .bg-amber-950\/30 p,
+.light-mode .bg-amber-950\/30 span {
   color: #92400e !important;
 }
 
 .light-mode .bg-rose-950\/20,
-.light-mode .bg-red-950\/20 {
+.light-mode .bg-rose-950\/30,
+.light-mode .bg-red-950\/20,
+.light-mode .bg-red-950\/30 {
   background-color: #fff1f2 !important;
   border-color: #fecdd3 !important;
 }
+.light-mode .bg-rose-950\/20 p,
+.light-mode .bg-rose-950\/20 span,
+.light-mode .bg-rose-950\/30 p,
+.light-mode .bg-rose-950\/30 span,
+.light-mode .bg-red-950\/20 p,
+.light-mode .bg-red-950\/20 span {
+  color: #9f1239 !important;
+}
 
-/* Dynamic bar glow effect */
+/* Modals backdrop & container in light mode */
+.light-mode .fixed.bg-slate-950\/80 {
+  background-color: rgba(15, 23, 42, 0.65) !important;
+}
+
+/* Scenario preset buttons */
+.light-mode .scenario-btn-unselected {
+  background-color: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+  color: #1e293b !important;
+}
+
+/* Chart styling */
 .bar-glow {
-  box-shadow: 0 0 12px rgba(16, 185, 129, 0.4);
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.4);
 }
 
 .bar-glow-cyan {

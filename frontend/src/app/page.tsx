@@ -15,6 +15,15 @@ import EmergencyCenterModal from './components/EmergencyCenterModal';
 import ClimateInsightsModal from './components/ClimateInsightsModal';
 import ReportGeneratorModal from './components/ReportGeneratorModal';
 import AuthModal, { UserProfile } from './components/AuthModal';
+import { 
+  LOCALIZATION, 
+  translateCondition, 
+  translateRiskCategory, 
+  translateRiskFactor, 
+  translateDay, 
+  translateRecommendation, 
+  SupportedLanguage 
+} from './i18n';
 
 // TypeScript Interfaces for WeatherGPT data structures
 export interface WeatherCurrent {
@@ -202,421 +211,7 @@ const WeatherMap = dynamic(() => import('./components/WeatherMap'), {
   )
 });
 
-// Translation helper functions for dynamic backend text
-const translateCondition = (condition: string, lang: string): string => {
-  if (!condition || lang === 'en') return condition;
-  
-  const mapHi: Record<string, string> = {
-    "Partly Cloudy": "आंशिक रूप से बादल",
-    "Broken Clouds": "खंडित बादल",
-    "Overcast": "छाए हुए बादल",
-    "Clear Sky": "साफ़ आसमान",
-    "Clear": "साफ़ आसमान",
-    "Sunny": "धूप वाला मौसम",
-    "Light Rain": "हल्की बारिश",
-    "Moderate Rain": "मध्यम बारिश",
-    "Heavy Rain": "भारी बारिश",
-    "Thunderstorm": "गर्जन के साथ तूफान",
-    "Rain Showers": "बारिश की बौछारें",
-    "Rain": "बारिश",
-    "Clouds": "बादल",
-    "Mist": "धुंध",
-    "Fog": "कोहरा",
-    "Haze": "धुंध"
-  };
-
-  const mapMr: Record<string, string> = {
-    "Partly Cloudy": "अंशतः ढगाळ",
-    "Broken Clouds": "खंडित ढगाळ",
-    "Overcast": "पूर्ण ढगाळ",
-    "Clear Sky": "निरभ्र आकाश",
-    "Clear": "निरभ्र आकाश",
-    "Sunny": "ऊन्ह",
-    "Light Rain": "हलका पाऊस",
-    "Moderate Rain": "मध्यम पाऊस",
-    "Heavy Rain": "मुसळधार पाऊस",
-    "Thunderstorm": "विजांसह वादळ",
-    "Rain Showers": "पावसाच्या सरी",
-    "Rain": "पाऊस",
-    "Clouds": "ढगाळ",
-    "Mist": "धुकं",
-    "Fog": "दाट धुकं",
-    "Haze": "धुके"
-  };
-
-  if (lang === 'hi') return mapHi[condition] || condition;
-  if (lang === 'mr') return mapMr[condition] || condition;
-  return condition;
-};
-
-const translateRiskCategory = (category: string, lang: string): string => {
-  if (lang === 'hi') {
-    if (category === 'SEVERE') return 'अति गंभीर';
-    if (category === 'HIGH') return 'उच्च जोखिम';
-    if (category === 'MODERATE') return 'मध्यम जोखिम';
-    if (category === 'LOW') return 'कम जोखिम';
-  } else if (lang === 'mr') {
-    if (category === 'SEVERE') return 'अति गंभीर';
-    if (category === 'HIGH') return 'उच्च धोका';
-    if (category === 'MODERATE') return 'मध्यम धोका';
-    if (category === 'LOW') return 'कमी धोका';
-  }
-  return category;
-};
-
-const translateRiskFactor = (factor: string, lang: string): string => {
-  if (!factor || lang === 'en') return factor;
-
-  const factorHi: Record<string, string> = {
-    "Very High Precipitation Probability (>80%)": "अत्यधिक वर्षा की संभावना (>80%)",
-    "High Wind Velocity (>40 km/h)": "तेज हवा की गति (>40 किमी/घंटा)",
-    "Extremely Low Visibility (<2 km)": "अत्यंत कम दृश्यता (<2 किमी)",
-    "Extreme Heat Wave (>40°C)": "भीषण लू / अत्यधिक तापमान (>40°C)",
-    "Poor Air Quality Index (AQI > 200)": "खराब वायु गुणवत्ता (AQI > 200)",
-    "High UV Index (>8)": "उच्च यूवी इंडेक्स (>8)"
-  };
-
-  const factorMr: Record<string, string> = {
-    "Very High Precipitation Probability (>80%)": "अतिवृष्टीची उच्च शक्यता (>80%)",
-    "High Wind Velocity (>40 km/h)": "वादळी वार्याचा वेग (>40 किमी/तास)",
-    "Extremely Low Visibility (<2 km)": "अत्यंत कमी दृश्यमानता (<2 किमी)",
-    "Extreme Heat Wave (>40°C)": "तीव्र उष्णतेची लाट (>40°C)",
-    "Poor Air Quality Index (AQI > 200)": "प्रदूषित हवा (AQI > 200)",
-    "High UV Index (>8)": "उच्च यूव्ही इंडेक्स (>8)"
-  };
-
-  if (lang === 'hi') return factorHi[factor] || factor;
-  if (lang === 'mr') return factorMr[factor] || factor;
-  return factor;
-};
-
-const translateDay = (day: string, lang: string): string => {
-  if (!day || lang === 'en') return day;
-
-  const daysHi: Record<string, string> = {
-    "Today": "आज",
-    "Friday": "शुक्रवार",
-    "Saturday": "शनिवार",
-    "Sunday": "रविवार",
-    "Monday": "सोमवार",
-    "Tuesday": "मंगलवार",
-    "Wednesday": "बुधवार",
-    "Thursday": "गुरुवार",
-    "Mon": "सोम",
-    "Tue": "मंगल",
-    "Wed": "बुध",
-    "Thu": "गुरु",
-    "Fri": "शुक्र",
-    "Sat": "शनि",
-    "Sun": "रवि"
-  };
-
-  const daysMr: Record<string, string> = {
-    "Today": "आज",
-    "Friday": "शुक्रवार",
-    "Saturday": "शनिवार",
-    "Sunday": "रविवार",
-    "Monday": "सोमवार",
-    "Tuesday": "मंगळवार",
-    "Wednesday": "बुधवार",
-    "Thursday": "गुरूवार",
-    "Mon": "सोम",
-    "Tue": "मंगळ",
-    "Wed": "बुध",
-    "Thu": "गुरू",
-    "Fri": "शुक्र",
-    "Sat": "शनि",
-    "Sun": "रवि"
-  };
-
-  if (lang === 'hi') return daysHi[day] || day;
-  if (lang === 'mr') return daysMr[day] || day;
-  return day;
-};
-
-// Localization bundle
-const LOCALIZATION = {
-  en: {
-    app_title: "WeatherGPT",
-    tagline: "Understand the weather. Predict the risk. Take action.",
-    placeholder_search: "Search location...",
-    placeholder_chat: "Ask WeatherGPT about weather, travel safety, or crop advisory...",
-    nav_dashboard: "Dashboard",
-    nav_map: "Live Map",
-    nav_route: "Route Intel",
-    nav_alerts: "Official Alerts",
-    nav_disaster: "Command Center",
-    nav_settings: "Settings",
-    btn_travel: "Analyze Route",
-    label_risk: "Weather Risk Score",
-    label_why: "Why This Risk?",
-    label_recommendations: "AI Recommended Actions",
-    label_forecast: "7-Day Forecast",
-    mode_general: "General Public",
-    mode_traveller: "Traveller",
-    mode_farmer: "Farmer Mode",
-    mode_disaster: "Disaster Control",
-    mode_school: "School/College",
-    status_online: "Online",
-    status_offline: "Offline Mode",
-    disclaimer: "WeatherGPT provides AI-assisted insights based on available weather feeds. For emergencies, always follow instructions from authorized government and emergency management authorities.",
-
-    source: "Source",
-    feels_like: "Feels Like",
-    humidity: "Humidity",
-    wind: "Wind",
-    precipitation: "Precipitation",
-    atm_pressure: "Atm Pressure",
-    visibility: "Visibility",
-    uv_index: "UV Index",
-    air_quality: "Air Quality",
-    active_operating_mode: "Active Operating Mode & Persona Advisory",
-
-    mode_title_farmer: "🌾 Agro-Meteorological Advisory (Farmer Mode)",
-    mode_title_traveller: "🚗 Highway & Route Safety Advisory (Traveller Mode)",
-    mode_title_school: "🏫 Campus & Outdoor Activity Advisory (School/College Mode)",
-    mode_title_disaster: "🚨 Disaster Operations Directive (Command Mode)",
-    mode_title_general: "👤 General Public Weather Advisory",
-
-    mode_pill_public: "👤 Public",
-    mode_pill_farmer: "🌾 Farmer",
-    mode_pill_traveller: "🚗 Traveller",
-    mode_pill_school: "🏫 School",
-    mode_pill_disaster: "🚨 Disaster",
-
-    farmer_irrigation_title: "💧 Irrigation Advisory",
-    farmer_irrigation_desc: "Delay artificial field irrigation for 48 hours to prevent soil waterlogging.",
-    farmer_spraying_title: "🧪 Spraying & Fertilizers",
-    farmer_spraying_desc: "Avoid chemical pesticide spraying today; anticipated rain showers will wash off treatments.",
-    farmer_produce_title: "🌾 Produce Protection",
-    farmer_produce_desc: "Move harvested crops to elevated covered sheds. Verify drainage channels around crop fields.",
-
-    traveller_vis_title: "🛣️ Highway Visibility",
-    traveller_vis_desc: "Expect dense mist and fog patches in ghat corridors (Lonavala/Khandala).",
-    traveller_hydro_title: "🚘 Hydroplaning Watch",
-    traveller_hydro_desc: "Wind velocity high with active rain. Reduce speed on wet asphalt curves.",
-    traveller_hours_title: "⏰ Recommended Driving Hours",
-    traveller_hours_desc: "Optimal departure window: 6:00 AM to 11:00 AM before heavy afternoon cloudburst build-up.",
-
-    school_sports_title: "⚽ Sports & PE Safety",
-    school_sports_desc: "Physical education and outdoor ground activities should be moved indoors after 1:00 PM.",
-    school_lightning_title: "⚡ Lightning Risk Index",
-    school_lightning_desc: "Cloud-to-ground convective lightning hazard elevated during afternoon hours. Keep students indoors.",
-    school_bus_title: "🚌 Bus Fleet Transit",
-    school_bus_desc: "Coordinate evening dismissal routes early to avoid urban waterlogging hotspots along main arterial roads.",
-
-    disaster_river_title: "🌊 River & Spillway Level",
-    disaster_river_desc: "Khadakwasla Dam spillway discharge monitored. Low-lying riverbank settlements put on watch.",
-    disaster_rescue_title: "🚒 Emergency Deployment",
-    disaster_rescue_desc: "NDRF 5th Battalion rescue teams alerted. Rubber rescue boats positioned at high-risk transit hubs.",
-    disaster_public_title: "📢 Public Directive",
-    disaster_public_desc: "Issue red alert public notifications for low-lying urban inundation zones. Evacuate basement structures.",
-
-    general_rec_prefix: "💡 General Recommendation:",
-
-    day_details: "Day Details",
-    ai_advice: "AI Advice:",
-    rain_prob: "Rain Prob",
-    no_active_warnings: "No Active Weather Warnings",
-    clear_area_msg: "Current area is classified as clear by meteorological alerts.",
-
-    advanced_tools: "Advanced Analytics & Tools",
-    disaster_sim: "Disaster Simulator",
-    emergency_center: "Emergency Center",
-    climate_insights: "Climate Insights",
-    export_report: "Export Report",
-    login_guest: "Login / Guest",
-    guest_tag: "Guest",
-    no_risk_indicators: "No high-risk indicators active."
-  },
-  hi: {
-    app_title: "वेदरजीपीटी",
-    tagline: "मौसम समझें। जोखिम का आकलन करें। कार्रवाई करें।",
-    placeholder_search: "स्थान खोजें...",
-    placeholder_chat: "मौसम, यात्रा सुरक्षा या फसल संबंधी सलाह के बारे में पूछें...",
-    nav_dashboard: "डैशबोर्ड",
-    nav_map: "लाइव नक्शा",
-    nav_route: "मार्ग सुरक्षा",
-    nav_alerts: "आधिकारिक अलर्ट",
-    nav_disaster: "नियंत्रण केंद्र",
-    nav_settings: "सेटिंग्स",
-    btn_travel: "मार्ग विश्लेषण करें",
-    label_risk: "मौसम जोखिम स्कोर",
-    label_why: "यह जोखिम क्यों?",
-    label_recommendations: "एआई अनुशंसित कार्रवाइयां",
-    label_forecast: "7-दिवसीय पूर्वानुमान",
-    mode_general: "सामान्य जनता",
-    mode_traveller: "यात्री",
-    mode_farmer: "किसान मोड",
-    mode_disaster: "आपदा प्रबंधन",
-    mode_school: "स्कूल/कॉलेज",
-    status_online: "ऑनलाइन",
-    status_offline: "ऑफ़लाइन मोड",
-    disclaimer: "वेदरजीपीटी उपलब्ध डेटा के आधार पर एआई-जनरेटेड इनसाइट्स प्रदान करता है। आपातकालीन स्थितियों में हमेशा आधिकारिक सरकारी निर्देशों का पालन करें।",
-
-    source: "स्रोत",
-    feels_like: "अनुभूत तापमान",
-    humidity: "नमी",
-    wind: "हवा",
-    precipitation: "वर्षा संभावना",
-    atm_pressure: "वायु दबाव",
-    visibility: "दृश्यता",
-    uv_index: "यूवी इंडेक्स",
-    air_quality: "वायु गुणवत्ता",
-    active_operating_mode: "सक्रिय कार्य मोड एवं सलाह",
-
-    mode_title_farmer: "🌾 कृषि-मौसम परामर्श (किसान मोड)",
-    mode_title_traveller: "🚗 राजमार्ग व मार्ग सुरक्षा परामर्श (यात्री मोड)",
-    mode_title_school: "🏫 परिसर व बाहरी गतिविधि सलाह (स्कूल/कॉलेज मोड)",
-    mode_title_disaster: "🚨 आपदा संचालन निर्देश (कमांड मोड)",
-    mode_title_general: "👤 सामान्य जनता मौसम सलाह",
-
-    mode_pill_public: "👤 आम जनता",
-    mode_pill_farmer: "🌾 किसान",
-    mode_pill_traveller: "🚗 यात्री",
-    mode_pill_school: "🏫 स्कूल",
-    mode_pill_disaster: "🚨 आपदा",
-
-    farmer_irrigation_title: "💧 सिंचाई सलाह",
-    farmer_irrigation_desc: "खेत में जलभराव रोकने के लिए अगले 48 घंटों तक सिंचाई टालें।",
-    farmer_spraying_title: "🧪 छिड़काव और उर्वरक",
-    farmer_spraying_desc: "आज रासायनिक कीटनाशकों के छिड़काव से बचें; बारिश से दवा धुल जाएगी।",
-    farmer_produce_title: "🌾 फसल सुरक्षा",
-    farmer_produce_desc: "कटी हुई फसलों को ढके हुए शेड में रखें और जल निकासी की जांच करें।",
-
-    traveller_vis_title: "🛣️ राजमार्ग दृश्यता",
-    traveller_vis_desc: "घाट क्षेत्रों (लोनावाला/खंडाला) में घने कोहरे की उम्मीद है।",
-    traveller_hydro_title: "🚘 स्लिप / फिसलने का खतरा",
-    traveller_hydro_desc: "तेज हवा और बारिश के दौरान गीली सड़कों व मोड़ों पर वाहन की गति धीमी रखें।",
-    traveller_hours_title: "⏰ अनुशंसित यात्रा समय",
-    traveller_hours_desc: "उत्तम यात्रा समय: दोपहर की भारी बारिश से पहले सुबह 6:00 बजे से 11:00 बजे तक।",
-
-    school_sports_title: "⚽ खेल व शारीरिक सुरक्षा",
-    school_sports_desc: "दोपहर 1:00 बजे के बाद खेलकूद और बाहरी गतिविधियों को हॉल के अंदर रखें।",
-    school_lightning_title: "⚡ बिजली गिरने का जोखिम",
-    school_lightning_desc: "दोपहर में बिजली गिरने का खतरा अधिक है। छात्रों को परिसर के अंदर रखें।",
-    school_bus_title: "🚌 स्कूल बस परिवहन",
-    school_bus_desc: "जलभराव से बचने के लिए शाम की छुट्टी के बस रूट समय से पहले व्यवस्थित करें।",
-
-    disaster_river_title: "🌊 नदी व बांध जलस्तर",
-    disaster_river_desc: "खड़कवासला बांध के डिस्चार्ज पर नज़र रखी जा रही है। तटीय बस्तियां अलर्ट पर हैं।",
-    disaster_rescue_title: "🚒 आपातकालीन तैनाती",
-    disaster_rescue_desc: "NDRF 5वीं बटालियन बचाव दल सतर्क है। रबर नावें उच्च जोखिम क्षेत्रों में तैनात हैं।",
-    disaster_public_title: "📢 सार्वजनिक निर्देश",
-    disaster_public_desc: "निचले क्षेत्रों के लिए रेड अलर्ट जारी करें। बेसमेंट खाली कराएं।",
-
-    general_rec_prefix: "💡 सामान्य सलाह:",
-
-    day_details: "दिन का विवरण",
-    ai_advice: "एआई सलाह:",
-    rain_prob: "बारिश संभावना",
-    no_active_warnings: "कोई सक्रिय मौसम चेतावनी नहीं",
-    clear_area_msg: "वर्तमान क्षेत्र मौसम चेतावनियों से पूर्णतः मुक्त है।",
-
-    advanced_tools: "उन्नत विश्लेषण और उपकरण",
-    disaster_sim: "आपदा सिम्युलेटर",
-    emergency_center: "आपतकालीन केंद्र",
-    climate_insights: "जलवायु अंतर्दृष्टि",
-    export_report: "रिपोर्ट निर्यात",
-    login_guest: "लॉगिन / अतिथि",
-    guest_tag: "अतिथि",
-    no_risk_indicators: "कोई उच्च जोखिम संकेतक सक्रिय नहीं है।"
-  },
-  mr: {
-    app_title: "वेदरजीपीटी",
-    tagline: "हवामान समजून घ्या. जोखमीचा अंदाज लावा. कृती करा.",
-    placeholder_search: "ठिकाण शोधा...",
-    placeholder_chat: "हवामान, प्रवास सुरक्षितता किंवा पीक सल्ल्याबद्दल विचारा...",
-    nav_dashboard: "डॅशबोर्ड",
-    nav_map: "थेट नकाशा",
-    nav_route: "मार्ग सुरक्षितता",
-    nav_alerts: "अधिकृत इशारे",
-    nav_disaster: "नियंत्रण केंद्र",
-    nav_settings: "सेटिंग्ज",
-    btn_travel: "मार्ग विश्लेषण करा",
-    label_risk: "हवामान जोखीम गुण",
-    label_why: "हा धोका का आहे?",
-    label_recommendations: "एआय शिफारसी",
-    label_forecast: "7-दिवसांचा अंदाज",
-    mode_general: "सामान्य नागरिक",
-    mode_traveller: "प्रवासी मोड",
-    mode_farmer: "शेतकरी मोड",
-    mode_disaster: "आपदा नियंत्रण",
-    mode_school: "शाळा/कॉलेज",
-    status_online: "ऑनलाइन",
-    status_offline: "ऑफलाईन मोड",
-    disclaimer: "वेदरजीपीटी उपलब्ध डेटाच्या आधारे एआय-जनरेटेड इनसाइट्स प्रदान करते. आपत्कालीन परिस्थितीत नेहमी अधिकृत सरकारी सूचनांचे पालन करा.",
-
-    source: "स्रोत",
-    feels_like: "जाणवणारा तापमान",
-    humidity: "आर्द्रता",
-    wind: "वारा",
-    precipitation: "पावसाची शक्यता",
-    atm_pressure: "हवेचा दाब",
-    visibility: "दृश्यमानता",
-    uv_index: "युव्ही इंडेक्स",
-    air_quality: "हवेची गुणवत्ता",
-    active_operating_mode: "सक्रिय कार्य मोड व सल्ला",
-
-    mode_title_farmer: "🌾 शेती-हवामान सल्ला (शेतकरी मोड)",
-    mode_title_traveller: "🚗 महामार्ग व प्रवास सुरक्षितता (प्रवासी मोड)",
-    mode_title_school: "🏫 परिसर व मैदानी उपक्रम सल्ला (शाळा/कॉलेज)",
-    mode_title_disaster: "🚨 आपत्ती व्यवस्थापन निर्देश (कमांड मोड)",
-    mode_title_general: "👤 सामान्य नागरिक हवामान सल्ला",
-
-    mode_pill_public: "👤 नागरिक",
-    mode_pill_farmer: "🌾 शेतकरी",
-    mode_pill_traveller: "🚗 प्रवासी",
-    mode_pill_school: "🏫 शाळा",
-    mode_pill_disaster: "🚨 आपत्ती",
-
-    farmer_irrigation_title: "💧 सिंचन सल्ला",
-    farmer_irrigation_desc: "शेतात पाणी साचू नये म्हणून पुढील 48 तास सिंचन पुढे ढकला.",
-    farmer_spraying_title: "🧪 फवारणी व खते",
-    farmer_spraying_desc: "आज रासायनिक कीटकनाशक फवारणी टाळा; पावसाने औषध वाहून जाईल.",
-    farmer_produce_title: "🌾 पीक संरक्षण",
-    farmer_produce_desc: "काढणी केलेले पीक सुरक्षित शेडमध्ये ठेवा व पाण्याचा निचरा तपासा.",
-
-    traveller_vis_title: "🛣️ महामार्ग दृश्यमानता",
-    traveller_vis_desc: "घाट परिसरात (लोणावळा/खंडाळा) दाट धुक्याची शक्यता आहे.",
-    traveller_hydro_title: "🚘 घसरगुंडी धोका",
-    traveller_hydro_desc: "वादळी व ओल्या रस्त्यांवर वाहनाचा वेग कमी ठेवा.",
-    traveller_hours_title: "⏰ प्रवासाची योग्य वेळ",
-    traveller_hours_desc: "योग्य वेळ: दुपारी मुसळधार पावसापूर्वी सकाळी 6:00 ते 11:00.",
-
-    school_sports_title: "⚽ मैदानी उपक्रम सुरक्षा",
-    school_sports_desc: "दुपारी 1:00 नंतर मैदानी खेळ हॉलमध्ये घ्या.",
-    school_lightning_title: "⚡ वीज पडण्याचा धोका",
-    school_lightning_desc: "दुपारी विजांचा धोका जास्त आहे. विद्यार्थ्यांना वर्गात ठेवा.",
-    school_bus_title: "🚌 शाळा बस वाहतूक",
-    school_bus_desc: "पाणी साचण्यापूर्वी संध्याकाळचे बस मार्ग वेळेआधी नियोजन करा.",
-
-    disaster_river_title: "🌊 नदी व धरण पातळी",
-    disaster_river_desc: "खडकवासला धरणातून सोडणाऱ्या पाण्यावर लक्ष ठेवले आहे.",
-    disaster_rescue_title: "🚒 आपत्कालीन पथक",
-    disaster_rescue_desc: "NDRF 5वी बटालियन बचाव पथक सतर्क आहे. रबरी बोटी तैनात आहेत.",
-    disaster_public_title: "📢 सार्वजनिक निर्देश",
-    disaster_public_desc: "सखल भागांसाठी रेड अलर्ट जारी करा. तळघरे रिकामी करा.",
-
-    general_rec_prefix: "💡 सामान्य सल्ला:",
-
-    day_details: "दिवसाचा तपशील",
-    ai_advice: "एआय सल्ला:",
-    rain_prob: "पावसाची शक्यता",
-    no_active_warnings: "कोणताही सक्रिय इशारा नाही",
-    clear_area_msg: "सध्याचा परिसर हवामान इशार्‍यांपासून पूर्णपणे सुरक्षित आहे.",
-
-    advanced_tools: "प्रगत विश्लेषण आणि साधने",
-    disaster_sim: "आपत्ती सिम्युलेटर",
-    emergency_center: "आपत्कालीन केंद्र",
-    climate_insights: "हवामान अंतर्दृष्टी",
-    export_report: "अहवाल निर्यात",
-    login_guest: "लॉगिन / पाहुणे",
-    guest_tag: "पाहुणे",
-    no_risk_indicators: "कोणताही उच्च जोखीम दर्शक सक्रिय नाही."
-  }
-};
-
+// Using centralized localization bundle from i18n.ts
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 export default function WeatherGPT() {
@@ -1439,17 +1034,17 @@ export default function WeatherGPT() {
                       <button 
                         key={idx}
                         onClick={() => setSelectedForecastIndex(idx)}
-                        className={`flex-none w-32 p-4 rounded-xl border transition text-center select-none cursor-pointer
+                        className={`flex-none w-32 p-4 rounded-xl border transition text-center select-none cursor-pointer shadow-sm
                           ${selectedForecastIndex === idx 
-                            ? 'bg-emerald-500/10 border-emerald-500 text-emerald-400 shadow-md' 
-                            : 'bg-slate-900/55 border-slate-800/60 text-slate-400 hover:border-slate-700/60 hover:text-slate-200'
+                            ? 'bg-emerald-500/15 border-emerald-500 text-emerald-400 shadow-md ring-2 ring-emerald-500/30 font-bold' 
+                            : 'bg-slate-900/60 border-slate-800/80 text-slate-300 hover:border-slate-700 hover:text-slate-100'
                           }
                         `}
                       >
                         <p className="text-xs font-bold">{translateDay(fc.day, currentLang)}</p>
                         <div className="flex justify-center my-3">{getWeatherIcon(fc.icon)}</div>
                         <p className="text-base font-black text-white">{fc.temp}°C</p>
-                        <span className={`inline-block mt-2 px-1.5 py-0.5 rounded text-[8px] font-bold text-white
+                        <span className={`inline-block mt-2 px-1.5 py-0.5 rounded text-[8px] font-black text-white
                           ${fc.risk_level === 'SEVERE' ? 'bg-red-500' : 
                             fc.risk_level === 'HIGH' ? 'bg-orange-500' : 
                             fc.risk_level === 'MODERATE' ? 'bg-amber-500' : 'bg-emerald-500'}
@@ -1469,7 +1064,7 @@ export default function WeatherGPT() {
                           {translateDay(weather.forecast[selectedForecastIndex].day, currentLang)} — {translateCondition(weather.forecast[selectedForecastIndex].condition, currentLang)}
                         </h4>
                         <p className="text-xs text-slate-400 mt-1 max-w-xl">
-                          <span className="font-bold text-slate-300">{text.ai_advice}</span> {weather.forecast[selectedForecastIndex].recommendation}
+                          <span className="font-bold text-slate-300">{text.ai_advice}</span> {translateRecommendation(weather.forecast[selectedForecastIndex].recommendation, currentLang)}
                         </p>
                       </div>
                       
@@ -1490,9 +1085,9 @@ export default function WeatherGPT() {
                     <div>
                       <div className="flex items-center gap-2">
                         <TrendingUp className="h-5 w-5 text-cyan-400" />
-                        <h3 className="text-lg font-bold text-slate-100">7-Day Meteorological Trend</h3>
+                        <h3 className="text-lg font-bold text-slate-100">{text.trend_title}</h3>
                       </div>
-                      <p className="text-xs text-slate-400 mt-0.5">Interactive forecast analytics & precipitation variance</p>
+                      <p className="text-xs text-slate-400 mt-0.5">{text.trend_subtitle}</p>
                     </div>
 
                     {/* Tab Toggle: Rain % vs Temp °C */}
@@ -1506,7 +1101,7 @@ export default function WeatherGPT() {
                         }`}
                       >
                         <Droplets className="h-3.5 w-3.5" />
-                        Precipitation (%)
+                        {text.tab_precipitation}
                       </button>
                       <button
                         onClick={() => setChartMode('temp')}
@@ -1517,7 +1112,7 @@ export default function WeatherGPT() {
                         }`}
                       >
                         <Thermometer className="h-3.5 w-3.5" />
-                        Temperature (°C)
+                        {text.tab_temperature}
                       </button>
                     </div>
                   </div>
@@ -2256,20 +1851,24 @@ export default function WeatherGPT() {
         isOpen={simModalOpen}
         onClose={() => setSimModalOpen(false)}
         onApplyScenario={() => fetchWeatherData('Pune')}
+        lang={currentLang}
       />
       <EmergencyCenterModal
         isOpen={emergencyModalOpen}
         onClose={() => setEmergencyModalOpen(false)}
+        lang={currentLang}
       />
       <ClimateInsightsModal
         isOpen={climateModalOpen}
         onClose={() => setClimateModalOpen(false)}
         location={weather?.location || 'Pune'}
+        lang={currentLang}
       />
       <ReportGeneratorModal
         isOpen={reportModalOpen}
         onClose={() => setReportModalOpen(false)}
         location={weather?.location || 'Pune'}
+        lang={currentLang}
       />
       <AuthModal
         isOpen={authModalOpen}

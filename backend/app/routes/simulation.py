@@ -118,7 +118,7 @@ def run_disaster_simulation(req: DisasterSimRequest):
     
     return {
         "scenario": key,
-        "disclaimer": "HACKATHON SIMULATION MODE — NOT OFFICIAL EMERGENCY WARNING DATA",
+        "disclaimer": "SIMULATION MODE — NOT OFFICIAL EMERGENCY WARNING DATA",
         "intensity_multiplier": intensity,
         "result": preset
     }
