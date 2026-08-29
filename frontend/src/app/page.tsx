@@ -1140,7 +1140,7 @@ export default function WeatherGPT() {
                   </div>
 
                   {/* Chart Container with Fixed Parent Height */}
-                  <div className="h-56 w-full flex items-end justify-between gap-3 pt-6 pb-2 px-3 bg-slate-950/60 rounded-xl border border-slate-800/60">
+                  <div className="h-56 w-full flex items-end justify-between gap-3 pt-6 pb-2 px-3 bg-slate-950/60 rounded-xl border border-slate-800/60 chart-container-track">
                     {weather.forecast.map((fc: WeatherForecastItem, idx: number) => {
                       const isRainMode = chartMode === 'rain';
                       const displayVal = isRainMode ? `${fc.rain_probability}%` : `${fc.temp}°C`;
@@ -1168,7 +1168,7 @@ export default function WeatherGPT() {
                           </span>
 
                           {/* Bar Container Track with Explicit Height */}
-                          <div className="w-full h-32 bg-slate-900/90 border border-slate-800 rounded-t-xl overflow-hidden flex items-end relative p-1 shadow-inner">
+                          <div className="w-full h-32 bg-slate-900/90 border border-slate-800 rounded-t-xl overflow-hidden flex items-end relative p-1 shadow-inner chart-bar-well">
                             {/* Grid lines inside bar track */}
                             <div className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:100%_16px] pointer-events-none" />
                             
@@ -1738,7 +1738,7 @@ export default function WeatherGPT() {
                     className={`flex flex-col max-w-[85%] rounded-2xl p-3 text-xs leading-relaxed font-medium
                       ${msg.role === 'user' 
                         ? 'self-end bg-emerald-500 text-white rounded-tr-none' 
-                        : 'self-start bg-slate-900 border border-slate-800 text-slate-200 rounded-tl-none'
+                        : 'self-start bg-slate-900 border border-slate-800 text-slate-200 rounded-tl-none chat-assistant-bubble shadow-sm'
                       }
                     `}
                     style={{ alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start' }}
