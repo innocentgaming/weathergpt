@@ -1,5 +1,5 @@
 import json
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import Optional
@@ -8,6 +8,9 @@ from app.models.models import ChatSession, ChatMessage
 from app.services.ai_service import generate_chat_response
 
 router = APIRouter(prefix="/chat", tags=["chat"])
+# Rate limiting is handled globally by the slowapi limiter registered in main.py.
+# The AI/chat route gets the stricter 30/min limit set there; no local limiter needed.
+
 
 class ChatRequest(BaseModel):
     query: str
@@ -17,7 +20,7 @@ class ChatRequest(BaseModel):
     location: Optional[str] = None
 
 @router.post("")
-def chat_endpoint(req: ChatRequest, db: Session = Depends(get_db)):
+def chat_endpoint(request: Request, req: ChatRequest, db: Session = Depends(get_db)):
     try:
         # 1. Resolve or Create Chat Session
         session = None

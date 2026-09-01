@@ -1,34 +1,55 @@
 services:
-  # 1. FastAPI Backend Web Service (Free Tier Native Python)
+  # ── 1. PostgreSQL Database (Render Managed) ──────────────────────────────────
+  - type: pserv
+    name: weathergpt-db
+    plan: free
+    databaseName: weathergpt
+    databaseUser: weathergpt
+
+  # ── 2. FastAPI Backend Web Service ──────────────────────────────────────────
   - type: web
-    name: weathergpt-backendnew
+    name: weathergpt-backend
     runtime: python
     plan: free
     rootDir: backend
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
     envVars:
       - key: PORT
-        value: 8000
+        value: 10000              # Render assigns $PORT; this is just a hint
       - key: DEMO_MODE
-        value: "True"
+        value: "False"
       - key: DATABASE_URL
-        value: sqlite:///./weathergpt.db
+        fromDatabase:
+          name: weathergpt-db
+          property: connectionString
+      - key: ALLOWED_ORIGINS
+        value: "https://weathergpt-frontend.onrender.com"
+      - key: JWT_SECRET_KEY
+        generateValue: true       # Render auto-generates a secure random value
+      - key: JWT_EXPIRE_MINUTES
+        value: "60"
+      - key: WEATHER_CACHE_TTL_SECONDS
+        value: "600"
       - key: GEMINI_API_KEY
-        sync: false # Set in Render Dashboard
+        sync: false               # Set in Render Dashboard → Environment
       - key: OPENWEATHER_API_KEY
-        sync: false # Set in Render Dashboard
+        sync: false               # Set in Render Dashboard → Environment
 
-  # 2. Next.js Frontend Web Service (Free Tier Native Node.js)
+  # ── 3. Next.js Frontend Web Service ─────────────────────────────────────────
   - type: web
-    name: weathergpt-frontendnew
+    name: weathergpt-frontend
     runtime: node
     plan: free
     rootDir: frontend
     buildCommand: npm install && npm run build
     startCommand: npm start
+    healthCheckPath: /
     envVars:
       - key: PORT
         value: 3000
       - key: NEXT_PUBLIC_API_URL
-        value: https://weathergpt-backendnew.onrender.com
+        value: https://weathergpt-backend.onrender.com
+      - key: NEXT_PUBLIC_WS_URL
+        value: wss://weathergpt-backend.onrender.com

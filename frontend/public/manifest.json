@@ -1,13 +1,15 @@
 {
-  "name": "WeatherGPT AI Meteorological Copilot",
+  "name": "WeatherGPT — AI Weather Intelligence",
   "short_name": "WeatherGPT",
-  "description": "Conversational AI weather forecasting, alerts, and travel route intelligence command center.",
-  "theme_color": "#0f172a",
-  "background_color": "#0f172a",
-  "display": "standalone",
-  "orientation": "portrait",
-  "scope": "/",
+  "description": "AI-powered weather intelligence and disaster preparedness platform for India. Multilingual, offline-resilient.",
   "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#6366f1",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "lang": "en",
+  "categories": ["weather", "utilities", "productivity"],
   "icons": [
     {
       "src": "https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f326.png",
@@ -22,7 +24,29 @@
     {
       "src": "https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/512x512/1f326.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "maskable any"
     }
-  ]
+  ],
+  "shortcuts": [
+    {
+      "name": "Check Weather",
+      "short_name": "Weather",
+      "description": "View current weather dashboard",
+      "url": "/?tab=weather"
+    },
+    {
+      "name": "Disaster Alerts",
+      "short_name": "Alerts",
+      "description": "View active disaster alerts",
+      "url": "/?tab=alerts"
+    },
+    {
+      "name": "AI Assistant",
+      "short_name": "Chat",
+      "description": "Open the AI weather assistant",
+      "url": "/?tab=chat"
+    }
+  ],
+  "prefer_related_applications": false
 }
