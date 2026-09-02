@@ -1,10 +1,21 @@
 import json
 import requests
+import time
 from datetime import datetime, timedelta
 from typing import Dict, Any, List, Optional
 from sqlalchemy.orm import Session
 from app.config.settings import settings
 from app.models.models import WeatherCache, OfficialAlert
+
+# Reusable HTTP connection pool for high-throughput, low-latency requests
+_HTTP_SESSION = requests.Session()
+_HTTP_ADAPTER = requests.adapters.HTTPAdapter(pool_connections=20, pool_maxsize=50, max_retries=1)
+_HTTP_SESSION.mount("https://", _HTTP_ADAPTER)
+_HTTP_SESSION.mount("http://", _HTTP_ADAPTER)
+
+# Sub-millisecond in-memory cache for weather data (TTL 3 minutes)
+_FAST_WEATHER_CACHE: Dict[str, Dict[str, Any]] = {}
+_GEO_COORDS_CACHE: Dict[str, tuple] = {}
 
 # Coordinates for demo cities
 DEMO_COORDINATES = {
@@ -725,11 +736,15 @@ def fetch_weather_from_open_meteo(city: str) -> Dict[str, Any]:
 
         # Check if city string is in DEMO_COORDINATES
         norm_c = normalize_city_name(city)
-        if norm_c in DEMO_COORDINATES:
+        # Check if coordinates are cached in memory
+        if norm_c in _GEO_COORDS_CACHE:
+            lat, lon, display_name = _GEO_COORDS_CACHE[norm_c]
+        elif norm_c in DEMO_COORDINATES:
             lat = DEMO_COORDINATES[norm_c]["lat"]
             lon = DEMO_COORDINATES[norm_c]["lon"]
             state = DEMO_COORDINATES[norm_c].get("state", "India")
             display_name = f"{city.title()}, {state} India"
+            _GEO_COORDS_CACHE[norm_c] = (lat, lon, display_name)
 
         # Check if city string is GPS coordinates e.g. "18.5204,73.8567"
         elif "," in city and any(char.isdigit() for char in city):
@@ -740,7 +755,7 @@ def fetch_weather_from_open_meteo(city: str) -> Dict[str, Any]:
                 
                 # Perform reverse geocoding for human readable place name
                 try:
-                    rev_res = requests.get(f"https://api.bigdatacloud.net/data/reverse-geocode-client?latitude={lat}&longitude={lon}&localityLanguage=en", timeout=3)
+                    rev_res = _HTTP_SESSION.get(f"https://api.bigdatacloud.net/data/reverse-geocode-client?latitude={lat}&longitude={lon}&localityLanguage=en", timeout=2.5)
                     if rev_res.ok:
                         rdata = rev_res.json()
                         loc_name = rdata.get("locality") or rdata.get("city") or "Current Location"
@@ -757,7 +772,7 @@ def fetch_weather_from_open_meteo(city: str) -> Dict[str, Any]:
         # If not coordinates or demo city, use forward Geocoding search
         if lat is None or lon is None:
             geo_url = f"https://geocoding-api.open-meteo.com/v1/search?name={city}&count=1"
-            geo_res = requests.get(geo_url, timeout=5)
+            geo_res = _HTTP_SESSION.get(geo_url, timeout=3.0)
             geo_data = geo_res.json()
             
             if not geo_data or "results" not in geo_data or not geo_data["results"]:
@@ -773,10 +788,12 @@ def fetch_weather_from_open_meteo(city: str) -> Dict[str, Any]:
                 state_name = res_loc.get("admin1", "")
                 country_name = res_loc.get("country", "")
                 display_name = f"{city_name}, {state_name} {country_name}".strip()
+            
+            _GEO_COORDS_CACHE[norm_c] = (lat, lon, display_name)
         
         # Step 2: Fetch Live Forecast & Current Weather
         weather_url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,surface_pressure,wind_speed_10m,wind_direction_10m&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,wind_speed_10m_max&timezone=auto"
-        w_res = requests.get(weather_url, timeout=5)
+        w_res = _HTTP_SESSION.get(weather_url, timeout=3.5)
         w_data = w_res.json()
         
         current = w_data.get("current", {})
@@ -860,11 +877,14 @@ def fetch_weather_from_open_meteo(city: str) -> Dict[str, Any]:
             elif p_prob > 30 or w_max > 15:
                 risk_lvl = "MODERATE"
                 
-            recs = "Normal activity."
-            if risk_lvl == "SEVERE": recs = "Extreme weather watch."
-            elif risk_lvl == "HIGH": recs = "Rain/wind warning."
-            elif risk_lvl == "MODERATE": recs = "Carry umbrella."
-            
+            recs = "Optimal conditions for travel and outdoor activities."
+            if risk_lvl == "SEVERE":
+                recs = "Severe weather warning. Limit travel and secure outdoor assets."
+            elif risk_lvl == "HIGH":
+                recs = "Elevated risk. Carry rain protection or monitor storm updates."
+            elif risk_lvl == "MODERATE":
+                recs = "Carry umbrella."
+                
             forecast_list.append({
                 "day": day_name,
                 "temp": round(t_max),
@@ -896,7 +916,7 @@ def get_wind_direction(deg: int) -> str:
 
 
 def get_weather(db: Any, location: Any = None) -> Dict[str, Any]:
-    """Retrieves weather, prioritizing Live API (Open-Meteo/OpenWeatherMap), then Database Cache, then Offline Fallback."""
+    """Retrieves weather with Sub-millisecond Memory Cache, then DB, then Live API."""
     # Ensure parameter flexibility in case arguments are passed in reverse order (location, db)
     if isinstance(db, str) and (location is None or isinstance(location, Session)):
         db, location = location, db
@@ -905,8 +925,15 @@ def get_weather(db: Any, location: Any = None) -> Dict[str, Any]:
         db = None
 
     norm_city = normalize_city_name(str(location or "pune"))
+    now_ts = time.time()
     
-    # 1. Check Database Cache (5-minute fresh cache)
+    # 1. Check Sub-millisecond In-Memory Fast Cache (TTL 180s)
+    if norm_city in _FAST_WEATHER_CACHE:
+        entry = _FAST_WEATHER_CACHE[norm_city]
+        if now_ts < entry["expires_at"]:
+            return entry["data"]
+
+    # 2. Check Database Cache (5-minute fresh cache)
     cache_entry = None
     if db is not None and isinstance(db, Session):
         try:
@@ -916,14 +943,16 @@ def get_weather(db: Any, location: Any = None) -> Dict[str, Any]:
                 if age < timedelta(minutes=5):
                     parsed = json.loads(cache_entry.data)
                     parsed["current"]["updated_at"] = f"Cached, {(age.seconds // 60)}m ago"
+                    _FAST_WEATHER_CACHE[norm_city] = {"data": parsed, "expires_at": now_ts + 180}
                     return parsed
         except Exception:
             pass
 
-    # 2. OpenWeatherMap API (if key explicitly provided)
+    # 3. OpenWeatherMap API (if key explicitly provided)
     if settings.OPENWEATHER_API_KEY:
         try:
             api_data = fetch_weather_from_api(location, settings.OPENWEATHER_API_KEY)
+            _FAST_WEATHER_CACHE[norm_city] = {"data": api_data, "expires_at": now_ts + 180}
             if db is not None and isinstance(db, Session):
                 try:
                     if cache_entry:
@@ -939,9 +968,10 @@ def get_weather(db: Any, location: Any = None) -> Dict[str, Any]:
         except Exception:
             pass
 
-    # 3. Keyless Live Open-Meteo API Fetch (Primary Live Weather Source)
+    # 4. Keyless Live Open-Meteo API Fetch (Primary Live Weather Source)
     try:
         live_data = fetch_weather_from_open_meteo(location)
+        _FAST_WEATHER_CACHE[norm_city] = {"data": live_data, "expires_at": now_ts + 180}
         if db is not None and isinstance(db, Session):
             try:
                 if cache_entry:
@@ -957,13 +987,13 @@ def get_weather(db: Any, location: Any = None) -> Dict[str, Any]:
     except Exception as e:
         print(f"Live API Fetch Failed: {e}")
 
-    # 4. Offline Fallback (If cached entry exists even if older than 5m)
+    # 5. Offline Fallback (If cached entry exists even if older than 5m)
     if cache_entry:
         parsed = json.loads(cache_entry.data)
         parsed["current"]["updated_at"] = f"Offline Fallback (Cached {cache_entry.updated_at.strftime('%H:%M')})"
         return parsed
         
-    # 5. Offline Demo Fallback
+    # 6. Offline Demo Fallback
     default_key = norm_city if norm_city in MOCK_WEATHER_DATA else "pune"
     fallback_data = dict(MOCK_WEATHER_DATA[default_key])
     fallback_data["location"] = f"{location.title()} (Demo Fallback)"

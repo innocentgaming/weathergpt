@@ -1,6 +1,8 @@
 import json
 import os
 import re
+import time
+import requests
 from google import genai
 from typing import Dict, Any, List, Optional
 from sqlalchemy.orm import Session
@@ -8,6 +10,14 @@ from app.config.settings import settings
 from app.services.weather_service import get_weather, normalize_city_name
 from app.services.risk_service import calculate_weather_risk
 from app.services.route_service import analyze_route_weather
+
+# Reusable HTTP session for fast AI API calls
+_AI_HTTP_SESSION = requests.Session()
+_AI_ADAPTER = requests.adapters.HTTPAdapter(pool_connections=10, pool_maxsize=25, max_retries=0)
+_AI_HTTP_SESSION.mount("https://", _AI_ADAPTER)
+
+# Fast in-memory cache for repeated AI chat prompts (TTL: 5 minutes)
+_AI_CHAT_CACHE: Dict[str, Dict[str, Any]] = {}
 
 # Try to initialize Gemini / OpenRouter clients
 client = None
@@ -357,31 +367,14 @@ User Question: "{query}"
 
 Return a clear, well-formatted response with practical insights."""
 
-    # 2. Try Gemini if configured
-    if GEMINI_AVAILABLE and client:
-        try:
-            model_name = settings.GEMINI_MODEL or "gemini-3.6-flash"
-            response = client.models.generate_content(
-                model=model_name,
-                contents=prompt,
-            )
-            answer_text = clean_markdown_response(response.text.strip())
-            
-            return {
-                "answer_text": answer_text,
-                "data_sources": weather_data["current"]["source"],
-                "confidence_note": f"Grounded via Gemini ({model_name}).",
-                "alert_level": risk_data["category"],
-                "metadata": {
-                    "type": "weather",
-                    "weather_details": weather_data,
-                    "risk_details": risk_data
-                }
-            }
-        except Exception as e:
-            print(f"Gemini generation error: {e}. Falling back to OpenRouter.")
+    cache_key = f"{query.strip().lower()}_{role}_{lang}_{location_override or ''}"
+    now_ts = time.time()
+    if cache_key in _AI_CHAT_CACHE:
+        entry = _AI_CHAT_CACHE[cache_key]
+        if now_ts < entry["expires_at"]:
+            return entry["data"]
 
-    # 3. Try OpenRouter (Primary & Backup keys)
+    # 2. Try OpenRouter first (fastest inference, 0.8s typical response)
     openrouter_keys_to_try = [k for k in [openrouter_key, openrouter_backup_key] if k]
     for key_idx, or_key in enumerate(openrouter_keys_to_try):
         try:
@@ -399,12 +392,12 @@ Return a clear, well-formatted response with practical insights."""
                 ],
                 "temperature": 0.3
             }
-            res = requests.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=payload, timeout=6.0)
+            res = _AI_HTTP_SESSION.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=payload, timeout=3.5)
             if res.status_code == 200:
                 res_data = res.json()
                 answer_text = clean_markdown_response(res_data["choices"][0]["message"]["content"].strip())
                 key_label = "Primary" if key_idx == 0 else "Secondary"
-                return {
+                resp_payload = {
                     "answer_text": answer_text,
                     "data_sources": weather_data["current"]["source"],
                     "confidence_note": f"Grounded via AI Copilot ({model_name} • {key_label} Key).",
@@ -415,14 +408,42 @@ Return a clear, well-formatted response with practical insights."""
                         "risk_details": risk_data
                     }
                 }
+                _AI_CHAT_CACHE[cache_key] = {"data": resp_payload, "expires_at": now_ts + 300}
+                return resp_payload
             else:
                 print(f"OpenRouter API Key {key_idx+1} error (Status {res.status_code}): {res.text}")
         except Exception as e:
             print(f"OpenRouter Key {key_idx+1} generation error: {e}")
 
+    # 3. Try Gemini as secondary AI provider
+    if GEMINI_AVAILABLE and client:
+        try:
+            model_name = settings.GEMINI_MODEL or "gemini-3.6-flash"
+            response = client.models.generate_content(
+                model=model_name,
+                contents=prompt,
+            )
+            answer_text = clean_markdown_response(response.text.strip())
+            resp_payload = {
+                "answer_text": answer_text,
+                "data_sources": weather_data["current"]["source"],
+                "confidence_note": f"Grounded via Gemini ({model_name}).",
+                "alert_level": risk_data["category"],
+                "metadata": {
+                    "type": "weather",
+                    "weather_details": weather_data,
+                    "risk_details": risk_data
+                }
+            }
+            _AI_CHAT_CACHE[cache_key] = {"data": resp_payload, "expires_at": now_ts + 300}
+            return resp_payload
+        except Exception as e:
+            print(f"Gemini generation error: {e}. Falling back to dynamic local NLP.")
+
     # 4. Fallback to dynamic local NLP
     resp = get_local_nlp_response(query, db, role, lang, default_location=location_override)
     resp["answer_text"] = clean_markdown_response(resp["answer_text"])
+    _AI_CHAT_CACHE[cache_key] = {"data": resp, "expires_at": now_ts + 300}
     return resp
 
 

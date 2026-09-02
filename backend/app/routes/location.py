@@ -4,6 +4,9 @@ from typing import List, Dict, Any, Optional
 
 router = APIRouter(prefix="/location", tags=["location"])
 
+# Ultra-fast in-memory cache for location searches
+_GEO_SEARCH_CACHE: Dict[str, Dict[str, Any]] = {}
+
 LOCATION_REGISTRY: List[Dict[str, Any]] = [
     {"name": "Pune", "state": "Maharashtra", "country": "India", "lat": 18.5204, "lon": 73.8567, "type": "IT & Education Hub"},
     {"name": "Mumbai", "state": "Maharashtra", "country": "India", "lat": 19.0760, "lon": 72.8777, "type": "Financial Capital"},
@@ -131,6 +134,9 @@ def search_locations(q: str = Query(..., description="Query location text or coo
     except Exception as exc:
         print(f"Geocoding API error for '{query}': {exc}")
 
+    if q_lower in _GEO_SEARCH_CACHE:
+        return _GEO_SEARCH_CACHE[q_lower]
+
     # Combine local matches + live results (avoid duplicates by lowercase name & state)
     combined: List[Dict[str, Any]] = []
     seen = set()
@@ -142,11 +148,13 @@ def search_locations(q: str = Query(..., description="Query location text or coo
             combined.append(item)
 
     if combined:
-        return {
+        res_payload = {
             "query": q,
             "resolved": combined[0],
             "suggestions": combined[:8]
         }
+        _GEO_SEARCH_CACHE[q_lower] = res_payload
+        return res_payload
 
     # Fallback to Title-cased query with default Pune coordinates if completely unrecognized
     fallback_res = {
@@ -157,8 +165,10 @@ def search_locations(q: str = Query(..., description="Query location text or coo
         "lon": 73.8567,
         "type": "Custom Search Location"
     }
-    return {
+    res_payload = {
         "query": q,
         "resolved": fallback_res,
         "suggestions": [fallback_res] + LOCATION_REGISTRY[:5]
     }
+    _GEO_SEARCH_CACHE[q_lower] = res_payload
+    return res_payload
