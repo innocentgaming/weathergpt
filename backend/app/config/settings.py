@@ -9,6 +9,8 @@ class Settings(BaseSettings):
     DEMO_MODE: bool = False
     DATABASE_URL: str = "sqlite:///./weathergpt.db"
     GEMINI_API_KEY: Optional[str] = None
+    OPENROUTER_API_KEY: Optional[str] = None
+    OPENROUTER_MODEL: str = "openrouter/auto"
     OPENWEATHER_API_KEY: Optional[str] = None
 
     # ── Security / JWT ────────────────────────────────────────────────────────

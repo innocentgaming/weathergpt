@@ -9,13 +9,25 @@ from app.services.weather_service import get_weather, normalize_city_name
 from app.services.risk_service import calculate_weather_risk
 from app.services.route_service import analyze_route_weather
 
-# Try to initialize Gemini client
+# Try to initialize Gemini / OpenRouter clients
 client = None
 GEMINI_AVAILABLE = False
-api_key = settings.GEMINI_API_KEY or os.environ.get("GEMINI_API_KEY")
-if api_key:
+OPENROUTER_AVAILABLE = False
+
+gemini_key = settings.GEMINI_API_KEY or os.environ.get("GEMINI_API_KEY")
+openrouter_key = settings.OPENROUTER_API_KEY or os.environ.get("OPENROUTER_API_KEY")
+
+# If gemini_key was provided as an OpenRouter key (sk-or-...), assign it to openrouter_key
+if gemini_key and gemini_key.startswith("sk-or-"):
+    openrouter_key = gemini_key
+    gemini_key = None
+
+if openrouter_key:
+    OPENROUTER_AVAILABLE = True
+
+if gemini_key:
     try:
-        client = genai.Client(api_key=api_key)
+        client = genai.Client(api_key=gemini_key)
         GEMINI_AVAILABLE = True
     except Exception as e:
         print(f"Error configuring Gemini: {e}")
@@ -265,19 +277,21 @@ def get_local_nlp_response(query: str, db: Session, role: str, lang: str, defaul
 
 def generate_chat_response(query: str, db: Session, role: str = "general", lang_override: Optional[str] = None, location_override: Optional[str] = None) -> Dict[str, Any]:
     """
-    Orchestrates the query to Gemini if available, otherwise falls back to dynamic local NLP.
+    Orchestrates the query to OpenRouter or Gemini if available, otherwise falls back to dynamic local NLP.
     Outputs structured chat packet with grounded data details.
     """
     lang = lang_override or detect_language(query)
     
-    if not GEMINI_AVAILABLE:
-        return get_local_nlp_response(query, db, role, lang, default_location=location_override)
-
-    # If Gemini is available, build the prompt grounded in live weather data
+    # 1. Fetch live weather & risk data for grounding
     location = extract_location(query, lang, default_location=location_override)
     weather_data = get_weather(db, location)
     risk_data = calculate_weather_risk(weather_data)
     
+    # If no online AI provider is configured, immediately return local NLP
+    if not OPENROUTER_AVAILABLE and not GEMINI_AVAILABLE:
+        return get_local_nlp_response(query, db, role, lang, default_location=location_override)
+
+    # Build persona and system prompt
     role_instruction = ""
     if role == "farmer":
         role_instruction = (
@@ -295,11 +309,10 @@ def generate_chat_response(query: str, db: Session, role: str = "general", lang_
             "conditions, forecasts, travel safety, and simple safety measures."
         )
 
-    prompt = f"""
-System instructions:
+    prompt = f"""System instructions:
 - You are WeatherGPT, a conversational AI weather copilot developed for India Meteorological Department (IMD).
 - Translate and answer in the language requested: {lang} (mr = Marathi, hi = Hindi, en = English).
-- Ground ALL weather assertions strictly in the provided data.
+- Ground ALL weather assertions strictly in the provided live meteorological data.
 - NEVER invent weather metrics or alerts.
 - Distinguish between observation and forecast.
 - Distinguish between official IMD warnings and AI-generated risk scoring.
@@ -313,28 +326,68 @@ Risk Assessment:
 
 User Question: "{query}"
 
-Return a response.
-"""
-    
-    try:
-        response = client.models.generate_content(
-            model="gemini-1.5-flash",
-            contents=prompt,
-        )
-        answer_text = response.text.strip()
-        
-        return {
-            "answer_text": answer_text,
-            "data_sources": weather_data["current"]["source"],
-            "confidence_note": "Grounded via Gemini 1.5 Flash.",
-            "alert_level": risk_data["category"],
-            "metadata": {
-                "type": "weather",
-                "weather_details": weather_data,
-                "risk_details": risk_data
+Return a clear, well-formatted response with practical insights."""
+
+    # 2. Try OpenRouter if configured
+    if OPENROUTER_AVAILABLE and openrouter_key:
+        try:
+            model_name = settings.OPENROUTER_MODEL or "openrouter/auto"
+            headers = {
+                "Authorization": f"Bearer {openrouter_key}",
+                "Content-Type": "application/json",
+                "HTTP-Referer": "https://weathergpt.onrender.com",
+                "X-Title": "WeatherGPT"
             }
-        }
-    except Exception as e:
-        print(f"Gemini generation error: {e}. Falling back to dynamic local NLP.")
-        return get_local_nlp_response(query, db, role, lang, default_location=location_override)
+            payload = {
+                "model": model_name,
+                "messages": [
+                    {"role": "user", "content": prompt}
+                ],
+                "temperature": 0.3
+            }
+            res = requests.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=payload, timeout=12)
+            if res.status_code == 200:
+                res_data = res.json()
+                answer_text = res_data["choices"][0]["message"]["content"].strip()
+                return {
+                    "answer_text": answer_text,
+                    "data_sources": weather_data["current"]["source"],
+                    "confidence_note": f"Grounded via AI Copilot ({model_name}).",
+                    "alert_level": risk_data["category"],
+                    "metadata": {
+                        "type": "weather",
+                        "weather_details": weather_data,
+                        "risk_details": risk_data
+                    }
+                }
+            else:
+                print(f"OpenRouter API error (Status {res.status_code}): {res.text}")
+        except Exception as e:
+            print(f"OpenRouter generation error: {e}")
+
+    # 3. Try Gemini if configured
+    if GEMINI_AVAILABLE and client:
+        try:
+            response = client.models.generate_content(
+                model="gemini-1.5-flash",
+                contents=prompt,
+            )
+            answer_text = response.text.strip()
+            
+            return {
+                "answer_text": answer_text,
+                "data_sources": weather_data["current"]["source"],
+                "confidence_note": "Grounded via Gemini 1.5 Flash.",
+                "alert_level": risk_data["category"],
+                "metadata": {
+                    "type": "weather",
+                    "weather_details": weather_data,
+                    "risk_details": risk_data
+                }
+            }
+        except Exception as e:
+            print(f"Gemini generation error: {e}. Falling back to dynamic local NLP.")
+
+    # 4. Fallback to dynamic local NLP
+    return get_local_nlp_response(query, db, role, lang, default_location=location_override)
 
