@@ -65,3 +65,7 @@ limits>=3.5.0
 # ── Background Tasks & Caching ───────────────────────────────────────────────
 APScheduler>=3.10.0
 cachetools>=5.0.0
+
+# ── Database Driver ──────────────────────────────────────────────────────────
+psycopg2-binary>=2.9.9
+

@@ -14,6 +14,8 @@ from app.config.settings import settings
 
 def _build_engine():
     url = settings.DATABASE_URL
+    if url.startswith("postgres://"):
+        url = url.replace("postgres://", "postgresql://", 1)
 
     if url.startswith("sqlite"):
         # SQLite: single-writer, allow multi-threaded reads
