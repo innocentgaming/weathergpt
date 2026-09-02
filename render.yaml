@@ -1,10 +1,11 @@
-services:
+databases:
   # ── 1. PostgreSQL Database (Render Managed) ──────────────────────────────────
-  - type: pserv
-    name: weathergpt-db
+  - name: weathergpt-db
     plan: free
     databaseName: weathergpt
-    databaseUser: weathergpt
+    user: weathergpt
+
+services:
 
   # ── 2. FastAPI Backend Web Service ──────────────────────────────────────────
   - type: web
