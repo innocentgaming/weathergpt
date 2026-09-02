@@ -22,6 +22,8 @@ interface DisasterSimulationModalProps {
   lang?: SupportedLanguage;
 }
 
+const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
 export default function DisasterSimulationModal({
   isOpen,
   onClose,
@@ -107,7 +109,7 @@ export default function DisasterSimulationModal({
   const handleRunPreset = async (scenario: string) => {
     setSelectedScenario(scenario);
     try {
-      const res = await fetch("http://localhost:8000/api/simulation/disaster", {
+      const res = await fetch(`${BACKEND_URL}/api/simulation/disaster`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ scenario, intensity })

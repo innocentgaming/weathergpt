@@ -18,10 +18,13 @@ interface EmergencyLocation {
 interface EmergencyCenterModalProps {
   isOpen: boolean;
   onClose: () => void;
+  location?: string;
   lang?: SupportedLanguage;
 }
 
-export default function EmergencyCenterModal({ isOpen, onClose, lang = 'en' }: EmergencyCenterModalProps) {
+const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+export default function EmergencyCenterModal({ isOpen, onClose, location = "Pune", lang = 'en' }: EmergencyCenterModalProps) {
   const [activeTab, setActiveTab] = useState<'shelters' | 'checklist' | 'contacts'>('shelters');
   const [locations, setLocations] = useState<EmergencyLocation[]>([]);
   const [hazard] = useState('flood');
@@ -45,8 +48,8 @@ export default function EmergencyCenterModal({ isOpen, onClose, lang = 'en' }: E
         ],
         emergency_contacts: [
           { name: "राष्ट्रीय आपदा प्रतिक्रिया बल (NDRF)", number: "1078 / 011-24363260" },
-          { name: "राज्य आपदा नियंत्रण कक्ष (महाराष्ट्र)", number: "1070" },
-          { name: "जिला आपदा प्रबंधन प्रकोष्ठ (पुणे)", number: "020-26123371" },
+          { name: "राज्य आपदा नियंत्रण कक्ष", number: "1070" },
+          { name: `जिला आपदा प्रबंधन प्रकोष्ठ (${location})`, number: "020-26123371" },
           { name: "एंबुलेंस आपातकालीन सेवा", number: "108" },
           { name: "पुलिस आपातकालीन सहायता", number: "112" }
         ]
@@ -68,8 +71,8 @@ export default function EmergencyCenterModal({ isOpen, onClose, lang = 'en' }: E
         ],
         emergency_contacts: [
           { name: "राष्ट्रीय आपत्ती प्रतिसाद दल (NDRF)", number: "1078 / 011-24363260" },
-          { name: "राज्य आपत्ती नियंत्रण कक्ष (महाराष्ट्र)", number: "1070" },
-          { name: "जिल्हा आपत्ती नियंत्रण कक्ष (पुणे)", number: "020-26123371" },
+          { name: "राज्य आपत्ती नियंत्रण कक्ष", number: "1070" },
+          { name: `जिल्हा आपत्ती नियंत्रण कक्ष (${location})`, number: "020-26123371" },
           { name: "रुग्णवाहिका आपत्कालीन सेवा", number: "108" },
           { name: "पोलीस आपत्कालीन मदत", number: "112" }
         ]
@@ -90,8 +93,8 @@ export default function EmergencyCenterModal({ isOpen, onClose, lang = 'en' }: E
       ],
       emergency_contacts: [
         { name: "National Disaster Response Force (NDRF)", number: "1078 / 011-24363260" },
-        { name: "State Disaster Control Room (Maharashtra)", number: "1070" },
-        { name: "District Disaster Cell (Pune)", number: "020-26123371" },
+        { name: "State Disaster Control Room", number: "1070" },
+        { name: `District Disaster Cell (${location})`, number: "020-26123371" },
         { name: "Ambulance Emergency", number: "108" },
         { name: "Police Emergency Hotline", number: "112" }
       ]
@@ -102,7 +105,7 @@ export default function EmergencyCenterModal({ isOpen, onClose, lang = 'en' }: E
 
   useEffect(() => {
     if (!isOpen) return;
-    fetch("http://localhost:8000/api/emergency/locations?city=Pune")
+    fetch(`${BACKEND_URL}/api/emergency/locations?city=${encodeURIComponent(location || "Pune")}`)
       .then(res => res.json())
       .then(data => {
         if (data.locations) setLocations(data.locations);

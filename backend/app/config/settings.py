@@ -9,7 +9,9 @@ class Settings(BaseSettings):
     DEMO_MODE: bool = False
     DATABASE_URL: str = "sqlite:///./weathergpt.db"
     GEMINI_API_KEY: Optional[str] = None
+    GEMINI_MODEL: str = "gemini-3.6-flash"
     OPENROUTER_API_KEY: Optional[str] = None
+    OPENROUTER_BACKUP_API_KEY: Optional[str] = None
     OPENROUTER_MODEL: str = "openrouter/auto"
     OPENWEATHER_API_KEY: Optional[str] = None
 
@@ -23,7 +25,7 @@ class Settings(BaseSettings):
     # ── CORS ──────────────────────────────────────────────────────────────────
     # Comma-separated list of allowed frontend origins.
     # Defaults to localhost dev origins; override in production .env.
-    ALLOWED_ORIGINS: str = "http://localhost:3000,http://127.0.0.1:3000"
+    ALLOWED_ORIGINS: str = "http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001,http://127.0.0.1:3001,http://localhost:5173,http://127.0.0.1:5173,http://localhost:8000,http://127.0.0.1:8000"
 
     # ── Caching / Redis ───────────────────────────────────────────────────────
     # Optional Redis URL. If not set, falls back to in-memory TTL cache.

@@ -6,7 +6,9 @@ sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 
 from fastapi.testclient import TestClient
 from app.main import app
+from app.database import Base, engine
 
+Base.metadata.create_all(bind=engine)
 client = TestClient(app)
 
 def test_root():
@@ -156,11 +158,53 @@ def test_auth():
     assert guest_res.status_code == 200
     assert guest_res.json()["user"]["is_guest"] is True
 
+def test_healthz():
+    res = client.get("/healthz")
+    assert res.status_code == 200
+    assert res.json()["status"] == "healthy"
+
+def test_analytics():
+    res_summary = client.get("/api/analytics/summary")
+    assert res_summary.status_code == 200
+    assert "total_registered_users" in res_summary.json()
+
+    res_popular = client.get("/api/analytics/popular-cities")
+    assert res_popular.status_code == 200
+    assert "popular_cities" in res_popular.json()
+
+    res_active = client.get("/api/analytics/active-users")
+    assert res_active.status_code == 200
+    assert "active_sessions_last_30min" in res_active.json()
+
+    res_history = client.get("/api/analytics/alert-history")
+    assert res_history.status_code == 200
+    assert "alerts" in res_history.json()
+
+def test_websockets():
+    # Test WebSocket alerts connection and ping-pong
+    with client.websocket_connect("/api/ws/alerts") as ws:
+        data = ws.receive_json()
+        assert data["type"] == "connected"
+        ws.send_json({"type": "ping"})
+        pong = ws.receive_json()
+        assert pong["type"] == "pong"
+
+    # Test WebSocket city weather push and refresh
+    with client.websocket_connect("/api/ws/weather/pune") as ws:
+        data = ws.receive_json()
+        assert data["type"] == "weather_update"
+        assert data["city"] == "pune"
+        ws.send_json({"type": "ping"})
+        pong = ws.receive_json()
+        assert pong["type"] == "pong"
+
 if __name__ == "__main__":
     print("Running WeatherGPT Backend Integration Tests...")
     try:
         test_root()
         print("[OK] Root endpoint working")
+        test_healthz()
+        print("[OK] Healthcheck (/healthz) endpoint working")
         test_auth()
         print("[OK] User Authentication (Register, Login, Guest, Me) working")
         test_current_weather()
@@ -185,6 +229,10 @@ if __name__ == "__main__":
         print("[OK] Natural Language Location Search working")
         test_report()
         print("[OK] Weather Intelligence Report Generator working")
+        test_analytics()
+        print("[OK] Analytics & Product Insights endpoints working")
+        test_websockets()
+        print("[OK] Real-time WebSockets (/ws/alerts, /ws/weather) working")
         print("\nAll backend integration tests PASSED successfully!")
     except AssertionError as e:
         print(f"Assertion failed: {e}")

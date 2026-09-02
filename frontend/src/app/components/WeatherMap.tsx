@@ -40,11 +40,13 @@ const INITIAL_LOCATIONS: MapLocationData[] = [
   { name: "Delhi", lat: 28.7041, lon: 77.1025, temp: "38°C", condition: "Heatwave", wind_speed: "12 km/h", rain_prob: "5%", risk: "SEVERE", color: "red", alert: "Red Alert: Thermal Stress" },
   { name: "Bengaluru", lat: 12.9716, lon: 77.5946, temp: "24°C", condition: "Drizzle", wind_speed: "10 km/h", rain_prob: "30%", risk: "LOW", color: "green", alert: "None" },
   { name: "Chennai", lat: 13.0827, lon: 80.2707, temp: "31°C", condition: "Partly Cloudy", wind_speed: "14 km/h", rain_prob: "20%", risk: "LOW", color: "green", alert: "None" },
-  { name: "Hyderabad", lat: 17.3850, lon: 78.4867, temp: "29°C", condition: "Partly Cloudy", wind_speed: "11 km/h", rain_prob: "15%", risk: "LOW", color: "green", alert: "None" }
+  { name: "Hyderabad", lat: 17.3850, lon: 78.4867, temp: "29°C", condition: "Partly Cloudy", wind_speed: "11 km/h", rain_prob: "15%", risk: "LOW", color: "green", alert: "None" },
+  { name: "Jaipur", lat: 26.9124, lon: 75.7873, temp: "35°C", condition: "Sunny", wind_speed: "14 km/h", rain_prob: "10%", risk: "LOW", color: "green", alert: "None" },
+  { name: "Kolkata", lat: 22.5726, lon: 88.3639, temp: "32°C", condition: "Humid", wind_speed: "16 km/h", rain_prob: "45%", risk: "MODERATE", color: "amber", alert: "None" }
 ];
 
 // Helper to recolor marker pin programmatically using Leaflet divIcon
-const createCustomIcon = (color: string, label: string) => {
+const createCustomIcon = (color: string, label: string, isCurrent: boolean = false) => {
   const markerColors: Record<string, string> = {
     red: '#f43f5e',     // rose-500
     orange: '#f97316',  // orange-500
@@ -58,9 +60,9 @@ const createCustomIcon = (color: string, label: string) => {
     className: 'custom-leaflet-marker',
     html: `
       <div class="relative flex items-center justify-center">
-        <span class="absolute inline-flex h-7 w-7 animate-ping rounded-full opacity-40" style="background-color: ${hexColor}"></span>
-        <div class="relative flex h-9 px-2 items-center justify-center rounded-full border-2 border-white text-[10px] font-bold text-white shadow-xl whitespace-nowrap" style="background-color: ${hexColor}">
-          ${label}
+        <span class="absolute inline-flex ${isCurrent ? 'h-10 w-10 opacity-75' : 'h-7 w-7 opacity-40'} animate-ping rounded-full" style="background-color: ${hexColor}"></span>
+        <div class="relative flex h-9 px-2.5 items-center justify-center rounded-full border-2 ${isCurrent ? 'border-amber-300 ring-2 ring-emerald-400' : 'border-white'} text-[10px] font-bold text-white shadow-2xl whitespace-nowrap cursor-pointer transition-transform hover:scale-110" style="background-color: ${hexColor}">
+          ${isCurrent ? '📍 ' : ''}${label}
         </div>
       </div>
     `,
@@ -72,7 +74,9 @@ const createCustomIcon = (color: string, label: string) => {
 function ChangeView({ center }: { center: [number, number] }) {
   const map = useMap();
   useEffect(() => {
-    map.setView(center, map.getZoom());
+    map.flyTo(center, Math.max(map.getZoom(), 8), {
+      duration: 1.2
+    });
   }, [center, map]);
   return null;
 }
@@ -80,10 +84,16 @@ function ChangeView({ center }: { center: [number, number] }) {
 interface WeatherMapProps {
   activeLayer: string; // 'temp', 'rain', 'wind', 'risk'
   searchCenter?: [number, number];
+  activeLocation?: string;
   onMarkerClick?: (locationName: string) => void;
 }
 
-export default function WeatherMap({ activeLayer, searchCenter = [18.97, 74.5], onMarkerClick }: WeatherMapProps) {
+export default function WeatherMap({ 
+  activeLayer, 
+  searchCenter = [18.97, 74.5], 
+  activeLocation = "Pune",
+  onMarkerClick 
+}: WeatherMapProps) {
   const [mapLocations, setMapLocations] = useState<MapLocationData[]>(INITIAL_LOCATIONS);
 
   // Fetch live weather data dynamically for map markers
@@ -91,14 +101,34 @@ export default function WeatherMap({ activeLayer, searchCenter = [18.97, 74.5], 
     let isMounted = true;
     const fetchLiveMapData = async () => {
       try {
+        // Ensure activeLocation is included in markers list if not already present
+        let targetList = [...INITIAL_LOCATIONS];
+        const exists = targetList.some(l => l.name.toLowerCase() === activeLocation.toLowerCase());
+        
+        if (!exists && activeLocation && searchCenter) {
+          targetList.push({
+            name: activeLocation,
+            lat: searchCenter[0],
+            lon: searchCenter[1],
+            temp: "27°C",
+            condition: "Live Weather",
+            wind_speed: "14 km/h",
+            rain_prob: "50%",
+            risk: "LOW",
+            color: "green",
+            alert: "None"
+          });
+        }
+
         const updated = await Promise.all(
-          INITIAL_LOCATIONS.map(async (loc) => {
+          targetList.map(async (loc) => {
             try {
               const res = await fetch(`${BACKEND_URL}/api/weather/current?location=${encodeURIComponent(loc.name)}`);
               if (res.ok) {
                 const data = await res.json();
                 const curr = data.weather?.current || {};
                 const rData = data.risk || {};
+                const coords = data.weather?.coordinates || {};
                 const score = rData.score || 35;
                 
                 let col = "green";
@@ -109,6 +139,8 @@ export default function WeatherMap({ activeLayer, searchCenter = [18.97, 74.5], 
 
                 return {
                   ...loc,
+                  lat: coords.lat || loc.lat,
+                  lon: coords.lon || loc.lon,
                   temp: `${curr.temp ?? 27}°C`,
                   condition: curr.condition || loc.condition,
                   wind_speed: `${curr.wind_speed ?? 15} km/h`,
@@ -133,7 +165,7 @@ export default function WeatherMap({ activeLayer, searchCenter = [18.97, 74.5], 
 
     fetchLiveMapData();
     return () => { isMounted = false; };
-  }, []);
+  }, [activeLocation, searchCenter]);
 
   const getLayerTitle = () => {
     switch(activeLayer) {
@@ -167,22 +199,23 @@ export default function WeatherMap({ activeLayer, searchCenter = [18.97, 74.5], 
         />
 
         {mapLocations.map((loc) => {
-          let label = loc.temp;
+          let label = `${loc.name}: ${loc.temp}`;
           const pinColor = loc.color;
+          const isCurrentSelected = activeLocation.toLowerCase().includes(loc.name.toLowerCase()) || loc.name.toLowerCase().includes(activeLocation.toLowerCase());
 
           if (activeLayer === 'rain') {
-            label = `🌧️ ${loc.rain_prob}`;
+            label = `${loc.name}: 🌧️ ${loc.rain_prob}`;
           } else if (activeLayer === 'wind') {
-            label = `💨 ${loc.wind_speed}`;
+            label = `${loc.name}: 💨 ${loc.wind_speed}`;
           } else if (activeLayer === 'risk') {
-            label = `⚠️ ${loc.risk.substring(0, 3)}`;
+            label = `${loc.name}: ⚠️ ${loc.risk.substring(0, 3)}`;
           }
 
-          const icon = createCustomIcon(pinColor, label);
+          const icon = createCustomIcon(pinColor, label, isCurrentSelected);
 
           return (
             <Marker 
-              key={loc.name} 
+              key={`${loc.name}-${loc.lat}-${loc.lon}`} 
               position={[loc.lat, loc.lon]} 
               icon={icon}
               eventHandlers={{
@@ -195,7 +228,12 @@ export default function WeatherMap({ activeLayer, searchCenter = [18.97, 74.5], 
             >
               <Popup>
                 <div className="text-slate-900 font-sans p-1">
-                  <h3 className="font-bold text-base border-b pb-1 text-slate-800">{loc.name}</h3>
+                  <h3 className="font-bold text-base border-b pb-1 text-slate-800 flex items-center justify-between">
+                    <span>{loc.name}</span>
+                    {isCurrentSelected && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold">Selected</span>
+                    )}
+                  </h3>
                   <div className="mt-2 space-y-1 text-sm text-slate-600">
                     <p><span className="font-semibold text-slate-700">Live Temp:</span> {loc.temp}</p>
                     <p><span className="font-semibold text-slate-700">Condition:</span> {loc.condition}</p>

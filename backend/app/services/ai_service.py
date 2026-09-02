@@ -16,13 +16,17 @@ OPENROUTER_AVAILABLE = False
 
 gemini_key = settings.GEMINI_API_KEY or os.environ.get("GEMINI_API_KEY")
 openrouter_key = settings.OPENROUTER_API_KEY or os.environ.get("OPENROUTER_API_KEY")
+openrouter_backup_key = settings.OPENROUTER_BACKUP_API_KEY or os.environ.get("OPENROUTER_BACKUP_API_KEY")
 
 # If gemini_key was provided as an OpenRouter key (sk-or-...), assign it to openrouter_key
 if gemini_key and gemini_key.startswith("sk-or-"):
-    openrouter_key = gemini_key
+    if not openrouter_key:
+        openrouter_key = gemini_key
+    elif not openrouter_backup_key:
+        openrouter_backup_key = gemini_key
     gemini_key = None
 
-if openrouter_key:
+if openrouter_key or openrouter_backup_key:
     OPENROUTER_AVAILABLE = True
 
 if gemini_key:
@@ -30,7 +34,7 @@ if gemini_key:
         client = genai.Client(api_key=gemini_key)
         GEMINI_AVAILABLE = True
     except Exception as e:
-        print(f"Error configuring Gemini: {e}")
+        print(f"Error configuring Gemini client: {e}")
 
 # Known cities list for fast matching
 KNOWN_CITIES = [
@@ -109,9 +113,9 @@ def extract_location(query: str, lang: str = "en", default_location: Optional[st
     }
     candidate_words = [w for w in words if w.lower() not in stop_words and len(w) >= 3]
     
-    for candidate in candidate_words:
+    for candidate in candidate_words[:1]:
         try:
-            geo_res = requests.get(f"https://geocoding-api.open-meteo.com/v1/search?name={candidate}&count=1", timeout=2)
+            geo_res = requests.get(f"https://geocoding-api.open-meteo.com/v1/search?name={candidate}&count=1", timeout=1.0)
             geo_data = geo_res.json()
             if geo_data and "results" in geo_data and geo_data["results"]:
                 return candidate
@@ -275,6 +279,28 @@ def get_local_nlp_response(query: str, db: Session, role: str, lang: str, defaul
     }
 
 
+def clean_markdown_response(text: str) -> str:
+    if not text:
+        return ""
+    # Strip asterisks used for bolding/italics (e.g., **text** -> text, *text* -> text)
+    text = re.sub(r'\*{1,4}', '', text)
+    # Strip pipe symbols used in tables or delimiters (|| or |)
+    text = re.sub(r'\|+', ' ', text)
+    # Strip hash header marks (### Header -> Header)
+    text = re.sub(r'#+\s*', '', text)
+    # Strip code backticks (` or ```)
+    text = re.sub(r'`+', '', text)
+    # Remove table divider lines (e.g. |---|---| or ---)
+    text = re.sub(r'^[|\s\-:\=\+]{3,}$', '', text, flags=re.MULTILINE)
+    # Normalize markdown bullet markers (- or *) to clean bullet symbol •
+    text = re.sub(r'^\s*[\*\-]\s+', '• ', text, flags=re.MULTILINE)
+    # Clean up double/multiple spaces created by symbol removals
+    text = re.sub(r'[ \t]{2,}', ' ', text)
+    # Clean up excessive newlines
+    text = re.sub(r'\n{3,}', '\n\n', text)
+    return text.strip()
+
+
 def generate_chat_response(query: str, db: Session, role: str = "general", lang_override: Optional[str] = None, location_override: Optional[str] = None) -> Dict[str, Any]:
     """
     Orchestrates the query to OpenRouter or Gemini if available, otherwise falls back to dynamic local NLP.
@@ -289,7 +315,9 @@ def generate_chat_response(query: str, db: Session, role: str = "general", lang_
     
     # If no online AI provider is configured, immediately return local NLP
     if not OPENROUTER_AVAILABLE and not GEMINI_AVAILABLE:
-        return get_local_nlp_response(query, db, role, lang, default_location=location_override)
+        resp = get_local_nlp_response(query, db, role, lang, default_location=location_override)
+        resp["answer_text"] = clean_markdown_response(resp["answer_text"])
+        return resp
 
     # Build persona and system prompt
     role_instruction = ""
@@ -317,6 +345,7 @@ def generate_chat_response(query: str, db: Session, role: str = "general", lang_
 - Distinguish between observation and forecast.
 - Distinguish between official IMD warnings and AI-generated risk scoring.
 - Incorporate this Persona guidance: {role_instruction}
+- FORMATTING RULE: Provide clean, plain, human-readable text ONLY. DO NOT use raw markdown formatting symbols such as asterisks (* or **), double pipes (|| or |), hash headers (### or #), backticks, or markdown table borders. Write in clear paragraphs and simple bullet points using bullet symbols (•) or numbers.
 
 Weather Data provided:
 {json.dumps(weather_data, indent=2)}
@@ -328,12 +357,37 @@ User Question: "{query}"
 
 Return a clear, well-formatted response with practical insights."""
 
-    # 2. Try OpenRouter if configured
-    if OPENROUTER_AVAILABLE and openrouter_key:
+    # 2. Try Gemini if configured
+    if GEMINI_AVAILABLE and client:
+        try:
+            model_name = settings.GEMINI_MODEL or "gemini-3.6-flash"
+            response = client.models.generate_content(
+                model=model_name,
+                contents=prompt,
+            )
+            answer_text = clean_markdown_response(response.text.strip())
+            
+            return {
+                "answer_text": answer_text,
+                "data_sources": weather_data["current"]["source"],
+                "confidence_note": f"Grounded via Gemini ({model_name}).",
+                "alert_level": risk_data["category"],
+                "metadata": {
+                    "type": "weather",
+                    "weather_details": weather_data,
+                    "risk_details": risk_data
+                }
+            }
+        except Exception as e:
+            print(f"Gemini generation error: {e}. Falling back to OpenRouter.")
+
+    # 3. Try OpenRouter (Primary & Backup keys)
+    openrouter_keys_to_try = [k for k in [openrouter_key, openrouter_backup_key] if k]
+    for key_idx, or_key in enumerate(openrouter_keys_to_try):
         try:
             model_name = settings.OPENROUTER_MODEL or "openrouter/auto"
             headers = {
-                "Authorization": f"Bearer {openrouter_key}",
+                "Authorization": f"Bearer {or_key}",
                 "Content-Type": "application/json",
                 "HTTP-Referer": "https://weathergpt.onrender.com",
                 "X-Title": "WeatherGPT"
@@ -345,14 +399,15 @@ Return a clear, well-formatted response with practical insights."""
                 ],
                 "temperature": 0.3
             }
-            res = requests.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=payload, timeout=12)
+            res = requests.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=payload, timeout=6.0)
             if res.status_code == 200:
                 res_data = res.json()
-                answer_text = res_data["choices"][0]["message"]["content"].strip()
+                answer_text = clean_markdown_response(res_data["choices"][0]["message"]["content"].strip())
+                key_label = "Primary" if key_idx == 0 else "Secondary"
                 return {
                     "answer_text": answer_text,
                     "data_sources": weather_data["current"]["source"],
-                    "confidence_note": f"Grounded via AI Copilot ({model_name}).",
+                    "confidence_note": f"Grounded via AI Copilot ({model_name} • {key_label} Key).",
                     "alert_level": risk_data["category"],
                     "metadata": {
                         "type": "weather",
@@ -361,33 +416,13 @@ Return a clear, well-formatted response with practical insights."""
                     }
                 }
             else:
-                print(f"OpenRouter API error (Status {res.status_code}): {res.text}")
+                print(f"OpenRouter API Key {key_idx+1} error (Status {res.status_code}): {res.text}")
         except Exception as e:
-            print(f"OpenRouter generation error: {e}")
-
-    # 3. Try Gemini if configured
-    if GEMINI_AVAILABLE and client:
-        try:
-            response = client.models.generate_content(
-                model="gemini-1.5-flash",
-                contents=prompt,
-            )
-            answer_text = response.text.strip()
-            
-            return {
-                "answer_text": answer_text,
-                "data_sources": weather_data["current"]["source"],
-                "confidence_note": "Grounded via Gemini 1.5 Flash.",
-                "alert_level": risk_data["category"],
-                "metadata": {
-                    "type": "weather",
-                    "weather_details": weather_data,
-                    "risk_details": risk_data
-                }
-            }
-        except Exception as e:
-            print(f"Gemini generation error: {e}. Falling back to dynamic local NLP.")
+            print(f"OpenRouter Key {key_idx+1} generation error: {e}")
 
     # 4. Fallback to dynamic local NLP
-    return get_local_nlp_response(query, db, role, lang, default_location=location_override)
+    resp = get_local_nlp_response(query, db, role, lang, default_location=location_override)
+    resp["answer_text"] = clean_markdown_response(resp["answer_text"])
+    return resp
+
 

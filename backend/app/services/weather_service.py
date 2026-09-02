@@ -895,30 +895,46 @@ def get_wind_direction(deg: int) -> str:
     return arr[(val % 16)]
 
 
-def get_weather(db: Session, location: str) -> Dict[str, Any]:
+def get_weather(db: Any, location: Any = None) -> Dict[str, Any]:
     """Retrieves weather, prioritizing Live API (Open-Meteo/OpenWeatherMap), then Database Cache, then Offline Fallback."""
-    norm_city = normalize_city_name(location)
+    # Ensure parameter flexibility in case arguments are passed in reverse order (location, db)
+    if isinstance(db, str) and (location is None or isinstance(location, Session)):
+        db, location = location, db
+    elif location is None and isinstance(db, str):
+        location = db
+        db = None
+
+    norm_city = normalize_city_name(str(location or "pune"))
     
     # 1. Check Database Cache (5-minute fresh cache)
-    cache_entry = db.query(WeatherCache).filter(WeatherCache.location == norm_city).first()
-    if cache_entry:
-        age = datetime.utcnow() - cache_entry.updated_at
-        if age < timedelta(minutes=5):
-            parsed = json.loads(cache_entry.data)
-            parsed["current"]["updated_at"] = f"Cached, {(age.seconds // 60)}m ago"
-            return parsed
+    cache_entry = None
+    if db is not None and isinstance(db, Session):
+        try:
+            cache_entry = db.query(WeatherCache).filter(WeatherCache.location == norm_city).first()
+            if cache_entry:
+                age = datetime.utcnow() - cache_entry.updated_at
+                if age < timedelta(minutes=5):
+                    parsed = json.loads(cache_entry.data)
+                    parsed["current"]["updated_at"] = f"Cached, {(age.seconds // 60)}m ago"
+                    return parsed
+        except Exception:
+            pass
 
     # 2. OpenWeatherMap API (if key explicitly provided)
     if settings.OPENWEATHER_API_KEY:
         try:
             api_data = fetch_weather_from_api(location, settings.OPENWEATHER_API_KEY)
-            if cache_entry:
-                cache_entry.data = json.dumps(api_data)
-                cache_entry.updated_at = datetime.utcnow()
-            else:
-                new_cache = WeatherCache(location=norm_city, data=json.dumps(api_data))
-                db.add(new_cache)
-            db.commit()
+            if db is not None and isinstance(db, Session):
+                try:
+                    if cache_entry:
+                        cache_entry.data = json.dumps(api_data)
+                        cache_entry.updated_at = datetime.utcnow()
+                    else:
+                        new_cache = WeatherCache(location=norm_city, data=json.dumps(api_data))
+                        db.add(new_cache)
+                    db.commit()
+                except Exception:
+                    pass
             return api_data
         except Exception:
             pass
@@ -926,13 +942,17 @@ def get_weather(db: Session, location: str) -> Dict[str, Any]:
     # 3. Keyless Live Open-Meteo API Fetch (Primary Live Weather Source)
     try:
         live_data = fetch_weather_from_open_meteo(location)
-        if cache_entry:
-            cache_entry.data = json.dumps(live_data)
-            cache_entry.updated_at = datetime.utcnow()
-        else:
-            new_cache = WeatherCache(location=norm_city, data=json.dumps(live_data))
-            db.add(new_cache)
-        db.commit()
+        if db is not None and isinstance(db, Session):
+            try:
+                if cache_entry:
+                    cache_entry.data = json.dumps(live_data)
+                    cache_entry.updated_at = datetime.utcnow()
+                else:
+                    new_cache = WeatherCache(location=norm_city, data=json.dumps(live_data))
+                    db.add(new_cache)
+                db.commit()
+            except Exception:
+                pass
         return live_data
     except Exception as e:
         print(f"Live API Fetch Failed: {e}")

@@ -26,7 +26,7 @@ services:
           name: weathergpt-db
           property: connectionString
       - key: ALLOWED_ORIGINS
-        value: "https://weathergpt-frontend.onrender.com"
+        value: "https://weathergpt-frontend.onrender.com,https://weathergpt.vercel.app,http://localhost:3000"
       - key: JWT_SECRET_KEY
         generateValue: true       # Render auto-generates a secure random value
       - key: JWT_EXPIRE_MINUTES
@@ -35,8 +35,14 @@ services:
         value: "600"
       - key: GEMINI_API_KEY
         sync: false               # Set in Render Dashboard → Environment
+      - key: GEMINI_MODEL
+        value: "gemini-3.6-flash"
       - key: OPENROUTER_API_KEY
         sync: false               # Set in Render Dashboard → Environment
+      - key: OPENROUTER_BACKUP_API_KEY
+        sync: false               # Set in Render Dashboard → Environment
+      - key: OPENROUTER_MODEL
+        value: "openrouter/auto"
       - key: OPENWEATHER_API_KEY
         sync: false               # Set in Render Dashboard → Environment
 

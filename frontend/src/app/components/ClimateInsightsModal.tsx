@@ -37,6 +37,8 @@ interface ClimateInsightsModalProps {
   lang?: SupportedLanguage;
 }
 
+const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
 export default function ClimateInsightsModal({ isOpen, onClose, location = "Pune", lang = 'en' }: ClimateInsightsModalProps) {
   const [data, setData] = useState<ClimateData | null>(null);
   const t = LOCALIZATION[lang] || LOCALIZATION.en;
@@ -59,7 +61,7 @@ export default function ClimateInsightsModal({ isOpen, onClose, location = "Pune
 
   useEffect(() => {
     if (!isOpen) return;
-    fetch(`http://localhost:8000/api/climate/insights?location=${encodeURIComponent(location)}`)
+    fetch(`${BACKEND_URL}/api/climate/insights?location=${encodeURIComponent(location)}`)
       .then(res => res.json())
       .then(d => setData(d))
       .catch(() => {

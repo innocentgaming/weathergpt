@@ -16,6 +16,7 @@ import EmergencyCenterModal from './components/EmergencyCenterModal';
 import ClimateInsightsModal from './components/ClimateInsightsModal';
 import ReportGeneratorModal from './components/ReportGeneratorModal';
 import AuthModal, { UserProfile } from './components/AuthModal';
+import LocationSearchBar, { LocationItem } from './components/LocationSearchBar';
 import { 
   LOCALIZATION, 
   translateCondition, 
@@ -201,6 +202,20 @@ const generateMessageId = (): number => {
   return Date.now();
 };
 
+const formatCleanText = (text: string): string => {
+  if (!text) return "";
+  return text
+    .replace(/\*{1,4}/g, "")
+    .replace(/\|+/g, " ")
+    .replace(/#+\s*/g, "")
+    .replace(/`+/g, "")
+    .replace(/^[|\s\-:=\+]{3,}$/gm, "")
+    .replace(/^\s*[\*\-]\s+/gm, "• ")
+    .replace(/[ \t]{2,}/g, " ")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+};
+
 // Dynamically import WeatherMap with SSR disabled (Leaflet requires browser window)
 const WeatherMap = dynamic(() => import('./components/WeatherMap'), {
   ssr: false,
@@ -221,6 +236,7 @@ export default function WeatherGPT() {
   const [currentLang, setCurrentLang] = useState<'en' | 'hi' | 'mr'>('en');
   const [currentMode, setCurrentMode] = useState<'general' | 'traveller' | 'farmer' | 'disaster' | 'school'>('general');
   const [searchLocation, setSearchLocation] = useState<string>('Pune');
+  const [mapCenter, setMapCenter] = useState<[number, number]>([18.5204, 73.8567]);
   const [activeMapLayer, setActiveMapLayer] = useState<'temp' | 'rain' | 'wind' | 'risk'>('temp');
   const [isOffline, setIsOffline] = useState<boolean>(false);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
@@ -355,11 +371,14 @@ export default function WeatherGPT() {
         }
       }
 
-      const res = await fetch(`${BACKEND_URL}/api/weather/current?location=${loc}`);
+      const res = await fetch(`${BACKEND_URL}/api/weather/current?location=${encodeURIComponent(loc)}`);
       if (res.ok) {
         const data = await res.json();
         setWeather(data.weather);
         setRisk(data.risk);
+        if (data.weather?.coordinates?.lat && data.weather?.coordinates?.lon) {
+          setMapCenter([data.weather.coordinates.lat, data.weather.coordinates.lon]);
+        }
         
         // Cache to local storage
         localStorage.setItem(`weather_cache_${loc.toLowerCase()}`, JSON.stringify(data));
@@ -435,6 +454,7 @@ export default function WeatherGPT() {
         (position) => {
           const lat = position.coords.latitude;
           const lon = position.coords.longitude;
+          setMapCenter([lat, lon]);
           const coordStr = `${lat.toFixed(4)},${lon.toFixed(4)}`;
           setSearchLocation(coordStr);
           fetchWeatherData(coordStr);
@@ -792,47 +812,26 @@ export default function WeatherGPT() {
         
         {/* HEADER BAR */}
         <header className="flex h-16 items-center justify-between px-6 border-b border-slate-900/60 bg-slate-900/20 backdrop-blur-md z-10 select-none">
-          <div className="flex items-center space-x-4">
+          <div className="flex-1 flex items-center space-x-4 max-w-2xl mr-4">
             {/* Mobile Sidebar Hamburger Toggle */}
-            <div className="md:hidden flex items-center space-x-2">
+            <div className="md:hidden flex items-center space-x-2 shrink-0">
               <span className="text-xl">⛈️</span>
-              <span className="font-extrabold text-slate-100">{text.app_title}</span>
+              <span className="font-extrabold text-slate-100 hidden sm:inline">{text.app_title}</span>
             </div>
             
-            {/* Location Autocomplete Selector & GPS Button */}
-            <div className="flex items-center space-x-2">
-              <div className="relative hidden md:block">
-                <select 
-                  value={searchLocation}
-                  onChange={(e) => setSearchLocation(e.target.value)}
-                  className="w-48 bg-slate-900/80 border border-slate-800 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-200 focus:outline-none focus:border-emerald-500 cursor-pointer shadow-inner"
-                >
-                  {searchLocation.includes(",") && (
-                    <option value={searchLocation}>📍 Current GPS Location</option>
-                  )}
-                  <option value="Pune">Pune, MH</option>
-                  <option value="Mumbai">Mumbai, MH</option>
-                  <option value="Nashik">Nashik, MH</option>
-                  <option value="Lonavala">Lonavala (Ghats)</option>
-                  <option value="Khopoli">Khopoli, MH</option>
-                  <option value="Panvel">Panvel, MH</option>
-                  <option value="Delhi">Delhi, NCR</option>
-                  <option value="Bengaluru">Bengaluru, KA</option>
-                  <option value="Chennai">Chennai, TN</option>
-                  <option value="Hyderabad">Hyderabad, TS</option>
-                </select>
-              </div>
-
-              {/* GPS Geolocation Trigger */}
-              <button
-                onClick={handleUseCurrentLocation}
-                title="Fetch Weather for Current GPS Location"
-                className="flex items-center space-x-1.5 px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-xl text-xs font-bold transition shadow-sm cursor-pointer"
-              >
-                <Compass className="h-3.5 w-3.5 animate-spin-slow" />
-                <span className="hidden sm:inline">GPS Location</span>
-              </button>
-            </div>
+            {/* Location Autocomplete Search Bar */}
+            <LocationSearchBar
+              currentLocation={weather?.location || searchLocation}
+              onSelectLocation={(locItem: LocationItem) => {
+                setSearchLocation(locItem.name);
+                if (locItem.lat && locItem.lon) {
+                  setMapCenter([locItem.lat, locItem.lon]);
+                }
+                fetchWeatherData(locItem.name);
+              }}
+              onUseGps={handleUseCurrentLocation}
+              isGpsLoading={isRefreshing}
+            />
           </div>
 
           {/* RIGHT CONTROLS: Language, Mode, Offline indicators */}
@@ -912,7 +911,53 @@ export default function WeatherGPT() {
 
           {/* TAB 1: WEATHER DASHBOARD */}
           {activeTab === 'dashboard' && weather && (
-            <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+            <div className="space-y-6">
+              
+              {/* Popular & Trending Locations Quick Switcher Ribbon */}
+              <div className="flex items-center gap-2 overflow-x-auto pb-1 custom-scrollbar select-none">
+                <span className="text-[11px] font-bold text-slate-400 shrink-0 flex items-center gap-1 bg-slate-900 px-3 py-1.5 rounded-xl border border-slate-800">
+                  <Sparkles className="h-3.5 w-3.5 text-amber-400" /> Prominent Hubs:
+                </span>
+                {[
+                  { name: "Pune", badge: "27°C • Rain", icon: "🌧️" },
+                  { name: "Mumbai", badge: "29°C • Coast", icon: "🌊" },
+                  { name: "Delhi", badge: "38°C • Warm", icon: "☀️" },
+                  { name: "Nashik", badge: "26°C • Agri", icon: "🍇" },
+                  { name: "Bengaluru", badge: "24°C • Cool", icon: "💻" },
+                  { name: "Jaipur", badge: "35°C • Clear", icon: "🏰" },
+                  { name: "Lonavala", badge: "21°C • Ghats", icon: "⛰️" },
+                  { name: "Shimla", badge: "18°C • Hills", icon: "🌲" },
+                  { name: "Kolkata", badge: "32°C • Humid", icon: "🏛️" },
+                  { name: "Goa", badge: "30°C • Beach", icon: "🏖️" },
+                  { name: "Varanasi", badge: "34°C • River", icon: "🕉️" }
+                ].map((hub) => {
+                  const isCurrent = (weather?.location || searchLocation).toLowerCase().includes(hub.name.toLowerCase());
+                  return (
+                    <button
+                      key={hub.name}
+                      onClick={() => {
+                        setSearchLocation(hub.name);
+                        fetchWeatherData(hub.name);
+                      }}
+                      className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition shrink-0 cursor-pointer ${
+                        isCurrent
+                          ? 'bg-emerald-500 text-slate-950 font-black shadow-lg shadow-emerald-500/20 scale-105 border border-emerald-400'
+                          : 'bg-slate-900/80 hover:bg-slate-800 text-slate-300 border border-slate-800 hover:border-slate-700'
+                      }`}
+                    >
+                      <span>{hub.icon}</span>
+                      <span>{hub.name}</span>
+                      <span className={`text-[10px] px-1.5 py-0.2 rounded-md ${
+                        isCurrent ? 'bg-slate-950/30 text-slate-900 font-extrabold' : 'bg-slate-800 text-emerald-400'
+                      }`}>
+                        {hub.badge}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
               
               {/* Left & Middle Column (Main Weather Info) */}
               <div className="xl:col-span-2 space-y-8">
@@ -1343,7 +1388,8 @@ export default function WeatherGPT() {
               </div>
 
             </div>
-          )}
+          </div>
+        )}
 
           {/* TAB 2: LIVE WEATHER MAP */}
           {activeTab === 'map' && (
@@ -1412,7 +1458,15 @@ export default function WeatherGPT() {
 
               {/* Leaflet container */}
               <div className="flex-1 min-h-[400px] h-full rounded-2xl overflow-hidden shadow-2xl border border-slate-800">
-                <WeatherMap activeLayer={activeMapLayer} onMarkerClick={(name) => setSearchLocation(name)} />
+                <WeatherMap 
+                  activeLayer={activeMapLayer} 
+                  searchCenter={mapCenter}
+                  activeLocation={weather ? weather.location : searchLocation}
+                  onMarkerClick={(name) => {
+                    setSearchLocation(name);
+                    fetchWeatherData(name);
+                  }} 
+                />
               </div>
             </div>
           )}
@@ -1785,7 +1839,7 @@ export default function WeatherGPT() {
                     `}
                     style={{ alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start' }}
                   >
-                    <p>{msg.content}</p>
+                    <p className="whitespace-pre-wrap">{formatCleanText(msg.content)}</p>
                     
                     {/* Inline weather card in chat assistant responses */}
                     {msg.metadata && msg.metadata.type === 'weather' && msg.metadata.weather_details && msg.metadata.risk_details && (
@@ -1914,24 +1968,25 @@ export default function WeatherGPT() {
       <DisasterSimulationModal
         isOpen={simModalOpen}
         onClose={() => setSimModalOpen(false)}
-        onApplyScenario={() => fetchWeatherData('Pune')}
+        onApplyScenario={() => fetchWeatherData(searchLocation)}
         lang={currentLang}
       />
       <EmergencyCenterModal
         isOpen={emergencyModalOpen}
         onClose={() => setEmergencyModalOpen(false)}
+        location={weather?.location || searchLocation || 'Pune'}
         lang={currentLang}
       />
       <ClimateInsightsModal
         isOpen={climateModalOpen}
         onClose={() => setClimateModalOpen(false)}
-        location={weather?.location || 'Pune'}
+        location={weather?.location || searchLocation || 'Pune'}
         lang={currentLang}
       />
       <ReportGeneratorModal
         isOpen={reportModalOpen}
         onClose={() => setReportModalOpen(false)}
-        location={weather?.location || 'Pune'}
+        location={weather?.location || searchLocation || 'Pune'}
         lang={currentLang}
       />
       <AuthModal

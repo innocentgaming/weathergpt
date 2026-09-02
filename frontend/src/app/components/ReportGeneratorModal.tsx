@@ -11,6 +11,8 @@ interface ReportGeneratorModalProps {
   lang?: SupportedLanguage;
 }
 
+const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
 export default function ReportGeneratorModal({ isOpen, onClose, location = "Pune", lang = 'en' }: ReportGeneratorModalProps) {
   const [reportType, setReportType] = useState('daily');
   const [isGenerating, setIsGenerating] = useState(false);
@@ -29,7 +31,7 @@ export default function ReportGeneratorModal({ isOpen, onClose, location = "Pune
   const handleGenerate = async () => {
     setIsGenerating(true);
     try {
-      const res = await fetch("http://localhost:8000/api/report/generate", {
+      const res = await fetch(`${BACKEND_URL}/api/report/generate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ location, report_type: reportType })

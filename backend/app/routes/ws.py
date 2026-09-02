@@ -167,7 +167,7 @@ async def weather_websocket(websocket: WebSocket, city: str, token: str = Query(
         db = SessionLocal()
         try:
             normalized = normalize_city_name(city_key)
-            weather_data = get_weather(normalized, db)
+            weather_data = get_weather(db, normalized)
             await websocket.send_json(_build_weather_push(city_key, weather_data))
         except Exception as exc:
             logger.warning("Initial weather push failed for %s: %s", city_key, exc)
@@ -191,7 +191,7 @@ async def weather_websocket(websocket: WebSocket, city: str, token: str = Query(
                     db = SessionLocal()
                     try:
                         normalized = normalize_city_name(city_key)
-                        weather_data = get_weather(normalized, db)
+                        weather_data = get_weather(db, normalized)
                         await websocket.send_json(_build_weather_push(city_key, weather_data))
                     finally:
                         db.close()
@@ -201,7 +201,7 @@ async def weather_websocket(websocket: WebSocket, city: str, token: str = Query(
                 db = SessionLocal()
                 try:
                     normalized = normalize_city_name(city_key)
-                    weather_data = get_weather(normalized, db)
+                    weather_data = get_weather(db, normalized)
                     await websocket.send_json(_build_weather_push(city_key, weather_data))
                 except Exception as exc:
                     logger.warning("Periodic weather push failed for %s: %s", city_key, exc)

@@ -9,6 +9,14 @@ Production-grade improvements (Tier 1):
   • /healthz endpoint for load-balancer health checks
 """
 
+import os
+import sys
+
+# Ensure backend root directory is in sys.path so python app/main.py works directly
+backend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if backend_dir not in sys.path:
+    sys.path.insert(0, backend_dir)
+
 import uvicorn
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
@@ -32,11 +40,11 @@ limiter = Limiter(key_func=get_remote_address, default_limits=["120/minute"])
 async def lifespan(app: FastAPI):
     # Startup
     Base.metadata.create_all(bind=engine)
-    print(f"✅ WeatherGPT API started | DB: {settings.DATABASE_URL.split(':///')[0]} | Port: {settings.PORT}")
+    print(f"[OK] WeatherGPT API started | DB: {settings.DATABASE_URL.split(':///')[0]} | Port: {settings.PORT}")
     yield
     # Shutdown
     engine.dispose()
-    print("🔌 WeatherGPT API shut down cleanly.")
+    print("[INFO] WeatherGPT API shut down cleanly.")
 
 
 # ── App ───────────────────────────────────────────────────────────────────────
@@ -102,9 +110,10 @@ def read_root():
     }
 
 
+@app.get("/health", tags=["health"])
 @app.get("/healthz", tags=["health"])
 def health_check():
-    """Load-balancer / Docker health check endpoint."""
+    """Load-balancer / Docker / Render health check endpoint."""
     return {"status": "healthy", "service": "weathergpt-api"}
 
 
