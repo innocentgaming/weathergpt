@@ -34,7 +34,7 @@ const POPULAR_HUBS: LocationItem[] = [
   { name: "Varanasi", state: "Uttar Pradesh", country: "India", lat: 25.3176, lon: 82.9739, type: "Heritage" }
 ];
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+import { getBackendUrl } from '../utils/apiUrl';
 
 export default function LocationSearchBar({
   currentLocation,
@@ -101,7 +101,7 @@ export default function LocationSearchBar({
 
     setIsLoading(true);
     try {
-      const res = await fetch(`${BACKEND_URL}/api/location/search?q=${encodeURIComponent(searchQuery.trim())}`);
+      const res = await fetch(`${getBackendUrl()}/api/location/search?q=${encodeURIComponent(searchQuery.trim())}`);
       if (res.ok) {
         const data = await res.json();
         setSuggestions(data.suggestions || (data.resolved ? [data.resolved] : []));

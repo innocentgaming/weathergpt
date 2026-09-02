@@ -66,12 +66,13 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 # 1. Gzip responses >= 1 KB for bandwidth efficiency
 app.add_middleware(GZipMiddleware, minimum_size=1024)
 
-# 2. CORS — lock to configured origins only (never wildcard in production)
+# 2. CORS — Allow configured origins, plus dynamic Render & Vercel HTTPS preview/production URLs
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.allowed_origins_list,
+    allow_origin_regex=r"^https://.*\.onrender\.com$|^https://.*\.vercel\.app$|^http://localhost(:\d+)?$|^http://127\.0\.0\.1(:\d+)?$",
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_methods=["*"],
     allow_headers=["*"],
 )
 

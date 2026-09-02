@@ -1,6 +1,7 @@
 import json
 import requests
 import time
+import re
 from datetime import datetime, timedelta
 from typing import Dict, Any, List, Optional
 from sqlalchemy.orm import Session
@@ -17,18 +18,45 @@ _HTTP_SESSION.mount("http://", _HTTP_ADAPTER)
 _FAST_WEATHER_CACHE: Dict[str, Dict[str, Any]] = {}
 _GEO_COORDS_CACHE: Dict[str, tuple] = {}
 
-# Coordinates for demo cities
+# Coordinates registry for instant lookup
 DEMO_COORDINATES = {
-    "pune": {"lat": 18.5204, "lon": 73.8567, "state": "Maharashtra"},
-    "mumbai": {"lat": 19.0760, "lon": 72.8777, "state": "Maharashtra"},
-    "nashik": {"lat": 19.9975, "lon": 73.7898, "state": "Maharashtra"},
-    "delhi": {"lat": 28.7041, "lon": 77.1025, "state": "Delhi"},
-    "bengaluru": {"lat": 12.9716, "lon": 77.5946, "state": "Karnataka"},
-    "chennai": {"lat": 13.0827, "lon": 80.2707, "state": "Tamil Nadu"},
-    "hyderabad": {"lat": 17.3850, "lon": 78.4867, "state": "Telangana"},
-    "lonavala": {"lat": 18.7557, "lon": 73.4091, "state": "Maharashtra"},
-    "khopoli": {"lat": 18.7904, "lon": 73.3424, "state": "Maharashtra"},
-    "panvel": {"lat": 18.9894, "lon": 73.1175, "state": "Maharashtra"}
+    "pune": {"lat": 18.5204, "lon": 73.8567, "name": "Pune", "state": "Maharashtra"},
+    "mumbai": {"lat": 19.0760, "lon": 72.8777, "name": "Mumbai", "state": "Maharashtra"},
+    "delhi": {"lat": 28.7041, "lon": 77.1025, "name": "Delhi", "state": "Delhi"},
+    "nashik": {"lat": 19.9975, "lon": 73.7898, "name": "Nashik", "state": "Maharashtra"},
+    "bengaluru": {"lat": 12.9716, "lon": 77.5946, "name": "Bengaluru", "state": "Karnataka"},
+    "bangalore": {"lat": 12.9716, "lon": 77.5946, "name": "Bengaluru", "state": "Karnataka"},
+    "chennai": {"lat": 13.0827, "lon": 80.2707, "name": "Chennai", "state": "Tamil Nadu"},
+    "hyderabad": {"lat": 17.3850, "lon": 78.4867, "name": "Hyderabad", "state": "Telangana"},
+    "jaipur": {"lat": 26.9124, "lon": 75.7873, "name": "Jaipur", "state": "Rajasthan"},
+    "lonavala": {"lat": 18.7557, "lon": 73.4091, "name": "Lonavala", "state": "Maharashtra"},
+    "shimla": {"lat": 31.1048, "lon": 77.1734, "name": "Shimla", "state": "Himachal Pradesh"},
+    "kolkata": {"lat": 22.5726, "lon": 88.3639, "name": "Kolkata", "state": "West Bengal"},
+    "goa": {"lat": 15.2993, "lon": 74.1240, "name": "Goa", "state": "Goa"},
+    "panaji": {"lat": 15.4909, "lon": 73.8278, "name": "Panaji", "state": "Goa"},
+    "varanasi": {"lat": 25.3176, "lon": 82.9739, "name": "Varanasi", "state": "Uttar Pradesh"},
+    "ahmedabad": {"lat": 23.0225, "lon": 72.5714, "name": "Ahmedabad", "state": "Gujarat"},
+    "surat": {"lat": 21.1702, "lon": 72.8311, "name": "Surat", "state": "Gujarat"},
+    "nagpur": {"lat": 21.1458, "lon": 79.0882, "name": "Nagpur", "state": "Maharashtra"},
+    "lucknow": {"lat": 26.8467, "lon": 80.9462, "name": "Lucknow", "state": "Uttar Pradesh"},
+    "indore": {"lat": 22.7196, "lon": 75.8577, "name": "Indore", "state": "Madhya Pradesh"},
+    "bhopal": {"lat": 23.2599, "lon": 77.4126, "name": "Bhopal", "state": "Madhya Pradesh"},
+    "patna": {"lat": 25.5941, "lon": 85.1376, "name": "Patna", "state": "Bihar"},
+    "srinagar": {"lat": 34.0837, "lon": 74.7973, "name": "Srinagar", "state": "Jammu & Kashmir"},
+    "kochi": {"lat": 9.9312, "lon": 76.2673, "name": "Kochi", "state": "Kerala"},
+    "thiruvananthapuram": {"lat": 8.5241, "lon": 76.9366, "name": "Thiruvananthapuram", "state": "Kerala"},
+    "amritsar": {"lat": 31.6340, "lon": 74.8723, "name": "Amritsar", "state": "Punjab"},
+    "chandigarh": {"lat": 30.7333, "lon": 76.7794, "name": "Chandigarh", "state": "Punjab & Haryana"},
+    "dehradun": {"lat": 30.3165, "lon": 78.0322, "name": "Dehradun", "state": "Uttarakhand"},
+    "visakhapatnam": {"lat": 17.6868, "lon": 83.2185, "name": "Visakhapatnam", "state": "Andhra Pradesh"},
+    "guwahati": {"lat": 26.1445, "lon": 91.7362, "name": "Guwahati", "state": "Assam"},
+    "bhubaneswar": {"lat": 20.2961, "lon": 85.8245, "name": "Bhubaneswar", "state": "Odisha"},
+    "mahabaleshwar": {"lat": 17.9237, "lon": 73.6586, "name": "Mahabaleshwar", "state": "Maharashtra"},
+    "khopoli": {"lat": 18.7904, "lon": 73.3424, "name": "Khopoli", "state": "Maharashtra"},
+    "panvel": {"lat": 18.9894, "lon": 73.1175, "name": "Panvel", "state": "Maharashtra"},
+    "alibaug": {"lat": 18.6414, "lon": 72.8722, "name": "Alibaug", "state": "Maharashtra"},
+    "wagholi": {"lat": 18.5793, "lon": 73.9822, "name": "Wagholi", "state": "Maharashtra"},
+    "hinjawadi": {"lat": 18.5913, "lon": 73.7389, "name": "Hinjawadi", "state": "Maharashtra"}
 }
 
 # High-fidelity mock weather data for DEMO MODE or fallback
@@ -559,29 +587,22 @@ DEFAULT_FALLBACK = {
 
 
 def normalize_city_name(city: str) -> str:
-    """Cleans up and matches city name to keys."""
-    cleaned = city.strip().lower()
-    if "pune" in cleaned:
+    """Cleans up and matches city name to registry keys or standard search strings."""
+    if not city:
         return "pune"
-    elif "mumbai" in cleaned:
-        return "mumbai"
-    elif "delhi" in cleaned:
-        return "delhi"
-    elif "bengaluru" in cleaned or "bangalore" in cleaned:
-        return "bengaluru"
-    elif "chennai" in cleaned or "madras" in cleaned:
-        return "chennai"
-    elif "hyderabad" in cleaned:
-        return "hyderabad"
-    elif "lonavala" in cleaned or "lonavla" in cleaned:
-        return "lonavala"
-    elif "khopoli" in cleaned:
-        return "khopoli"
-    elif "panvel" in cleaned:
-        return "panvel"
-    elif "nashik" in cleaned or "nasik" in cleaned:
-        return "nashik"
-    return cleaned
+    cleaned = str(city).strip().lower()
+    if "," in cleaned and any(c.isdigit() for c in cleaned):
+        return cleaned
+
+    # Strip prefixes or emojis e.g. 📍
+    cleaned_text = re.sub(r"[^\w\s,-]", "", cleaned).strip()
+
+    for key in DEMO_COORDINATES:
+        if key in cleaned_text:
+            return key
+
+    primary_part = cleaned_text.split(",")[0].strip()
+    return primary_part if primary_part else cleaned_text
 
 
 def fetch_weather_from_api(city: str, api_key: str) -> Dict[str, Any]:

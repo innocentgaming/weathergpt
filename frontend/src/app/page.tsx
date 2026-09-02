@@ -17,6 +17,7 @@ import ClimateInsightsModal from './components/ClimateInsightsModal';
 import ReportGeneratorModal from './components/ReportGeneratorModal';
 import AuthModal, { UserProfile } from './components/AuthModal';
 import LocationSearchBar, { LocationItem } from './components/LocationSearchBar';
+import { getBackendUrl } from './utils/apiUrl';
 import { 
   LOCALIZATION, 
   translateCondition, 
@@ -68,6 +69,10 @@ export interface WeatherAlert {
 
 export interface WeatherData {
   location: string;
+  coordinates?: {
+    lat: number;
+    lon: number;
+  };
   current: WeatherCurrent;
   forecast: WeatherForecastItem[];
   alerts?: WeatherAlert[];
@@ -76,7 +81,7 @@ export interface WeatherData {
 export interface RiskFactor {
   factor: string;
   score: number;
-  weight?: number; // Supports the backend weight display
+  weight?: number;
   description: string;
 }
 
