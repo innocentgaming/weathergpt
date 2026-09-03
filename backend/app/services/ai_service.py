@@ -89,8 +89,6 @@ def detect_language(query: str) -> str:
     return "en"
 
 
-import requests
-
 def extract_location(query: str, lang: str = "en", default_location: Optional[str] = None) -> str:
     """Dynamically extracts target location from query, geocodes candidates, or uses default_location."""
     q_lower = query.lower()
@@ -135,7 +133,7 @@ def extract_location(query: str, lang: str = "en", default_location: Optional[st
     # 5. Fallback to default_location if passed from frontend active city, else 'pune'
     if default_location and default_location.strip():
         return default_location.strip()
-            
+        
     return "pune"
 
 
@@ -243,7 +241,7 @@ def get_local_nlp_response(query: str, db: Session, role: str, lang: str, defaul
                 ans_text = f"नहीं, {loc_display} में आज भारी बारिश की संभावना नहीं है (बारिश की संभावना: {rain_prob}%)। वर्तमान मौसम {cond} और तापमान {temp}°C है।"
         elif lang == "mr":
             if is_raining:
-                ans_text = f"होय, {loc_display} मध्ये आज पावसाची शक्यता आहे (शक्यता: {rain_prob}%, हवामान: {cond}). सध्याचे तापमान {temp}°C आणि आद्रता {humidity}% आहे."
+                ans_text = f"होय, {loc_display} मध्ये आज पावसाची शक्यता आहे (शक्यता: {rain_prob}%, हवामान: {cond}). सध्याचे तापमान {temp}°C आणि आद्रता {humidity}% आहे।"
             else:
                 ans_text = f"नाही, {loc_display} मध्ये आज मुसळधार पावसाची शक्यता नाही (पावसाची शक्यता: {rain_prob}%). सध्याचे हवामान {cond} आणि तापमान {temp}°C आहे."
         else:
@@ -269,7 +267,7 @@ def get_local_nlp_response(query: str, db: Session, role: str, lang: str, defaul
     if lang == "hi":
         ans_text = f"{loc_display} के लिए मौसम की जानकारी: वर्तमान तापमान {temp}°C है, स्थिति '{cond}' है, आर्द्रता {humidity}% है, और हवा की गति {wind_spd} km/h है। जोखिम स्तर: {risk_lvl} ({risk_score}/100)।"
     elif lang == "mr":
-        ans_text = f"{loc_display} ची हवामान माहिती: सध्याचे तापमान {temp}°C आहे, हवामान '{cond}' आहे, आद्रता {humidity}% आहे, आणि वाऱ्याचा वेग {wind_spd} km/h आहे. धोका पातळी: {risk_lvl} ({risk_score}/100)."
+        ans_text = f"{loc_display} ची हवामान माहिती: सध्याचे तापमान {temp}°C आहे, हवामान '{cond}' आहे, आद्रता {humidity}% आहे, आणि वाऱ्याचा वेग {wind_spd} km/h आहे। धोका पातळी: {risk_lvl} ({risk_score}/100)."
     else:
         ans_text = f"Weather information for {loc_display}: Current temperature is {temp}°C, condition is {cond}, humidity is {humidity}%, and wind speed is {wind_spd} km/h. Risk Level: {risk_lvl} ({risk_score}/100)."
 
@@ -311,10 +309,25 @@ def clean_markdown_response(text: str) -> str:
     return text.strip()
 
 
-def generate_chat_response(query: str, db: Session, role: str = "general", lang_override: Optional[str] = None, location_override: Optional[str] = None) -> Dict[str, Any]:
+def generate_chat_response(
+    query: str,
+    db: Session,
+    role: str = "general",
+    lang_override: Optional[str] = None,
+    location_override: Optional[str] = None,
+    conversation_history: Optional[List[Dict[str, str]]] = None
+) -> Dict[str, Any]:
     """
     Orchestrates the query to OpenRouter or Gemini if available, otherwise falls back to dynamic local NLP.
     Outputs structured chat packet with grounded data details.
+    
+    Args:
+        query: The user's current question
+        db: Database session
+        role: User role (general, farmer, disaster_manager, traveller, school, etc.)
+        lang_override: Override language detection
+        location_override: Override location extraction
+        conversation_history: List of previous messages [{"role": "user"/"assistant", "content": "..."}]
     """
     lang = lang_override or detect_language(query)
     
@@ -341,13 +354,24 @@ def generate_chat_response(query: str, db: Session, role: str = "general", lang_
             "Act as a Disaster Management Emergency Director. Focus on active warning severity, "
             "waterlogging hotspots, river markers, road blockage hazard indices, and emergency actions."
         )
+    elif role == "traveller":
+        role_instruction = (
+            "Act as a Travel Safety Advisor. Focus on road conditions, visibility, "
+            "wind advisories, and optimal travel windows along routes."
+        )
+    elif role == "school":
+        role_instruction = (
+            "Act as a School Safety Coordinator. Focus on outdoor activity safety, "
+            "lightning risks, bus route weather, and student health advisories."
+        )
     else:
         role_instruction = (
             "Act as an AI Weather Assistant for the general public. Provide a summary of current "
             "conditions, forecasts, travel safety, and simple safety measures."
         )
 
-    prompt = f"""System instructions:
+    # Build system message with weather data
+    system_message = f"""System instructions:
 - You are WeatherGPT, a conversational AI weather copilot developed for India Meteorological Department (IMD).
 - Translate and answer in the language requested: {lang} (mr = Marathi, hi = Hindi, en = English).
 - Ground ALL weather assertions strictly in the provided live meteorological data.
@@ -356,16 +380,29 @@ def generate_chat_response(query: str, db: Session, role: str = "general", lang_
 - Distinguish between official IMD warnings and AI-generated risk scoring.
 - Incorporate this Persona guidance: {role_instruction}
 - FORMATTING RULE: Provide clean, plain, human-readable text ONLY. DO NOT use raw markdown formatting symbols such as asterisks (* or **), double pipes (|| or |), hash headers (### or #), backticks, or markdown table borders. Write in clear paragraphs and simple bullet points using bullet symbols (•) or numbers.
+- Be conversational, friendly, and helpful. Give practical, actionable advice.
+- Vary your response style - sometimes use emojis for friendly tone, sometimes be more formal depending on context.
+- If asked about something not weather-related, politely redirect to weather topics.
 
 Weather Data provided:
 {json.dumps(weather_data, indent=2)}
 
 Risk Assessment:
-{json.dumps(risk_data, indent=2)}
+{json.dumps(risk_data, indent=2)}"""
 
-User Question: "{query}"
-
-Return a clear, well-formatted response with practical insights."""
+    # Build messages array with conversation history
+    messages = [{"role": "system", "content": system_message}]
+    
+    # Add conversation history if provided (last 10 messages for context window)
+    if conversation_history:
+        for msg in conversation_history[-10:]:
+            messages.append({
+                "role": msg.get("role", "user"),
+                "content": msg.get("content", "")
+            })
+    
+    # Add current query
+    messages.append({"role": "user", "content": f'User Question: "{query}"\n\nReturn a clear, well-formatted response with practical insights.'})
 
     cache_key = f"{query.strip().lower()}_{role}_{lang}_{location_override or ''}"
     now_ts = time.time()
@@ -387,12 +424,15 @@ Return a clear, well-formatted response with practical insights."""
             }
             payload = {
                 "model": model_name,
-                "messages": [
-                    {"role": "user", "content": prompt}
-                ],
-                "temperature": 0.3
+                "messages": messages,
+                "temperature": 0.8,
+                "max_tokens": 1024,
+                "top_p": 0.95,
+                "frequency_penalty": 0.3,
+                "presence_penalty": 0.3
             }
-            res = _AI_HTTP_SESSION.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=payload, timeout=3.5)
+            print(f"[WeatherGPT] Calling OpenRouter with model={model_name}, messages={len(messages)}")
+            res = _AI_HTTP_SESSION.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=payload, timeout=10.0)
             if res.status_code == 200:
                 res_data = res.json()
                 answer_text = clean_markdown_response(res_data["choices"][0]["message"]["content"].strip())
@@ -411,7 +451,7 @@ Return a clear, well-formatted response with practical insights."""
                 _AI_CHAT_CACHE[cache_key] = {"data": resp_payload, "expires_at": now_ts + 300}
                 return resp_payload
             else:
-                print(f"OpenRouter API Key {key_idx+1} error (Status {res.status_code}): {res.text}")
+                print(f"OpenRouter API Key {key_idx+1} error (Status {res.status_code}): {res.text[:200]}")
         except Exception as e:
             print(f"OpenRouter Key {key_idx+1} generation error: {e}")
 
@@ -419,9 +459,17 @@ Return a clear, well-formatted response with practical insights."""
     if GEMINI_AVAILABLE and client:
         try:
             model_name = settings.GEMINI_MODEL or "gemini-3.6-flash"
+            # For Gemini, combine all messages into a single prompt
+            gemini_prompt = system_message + "\n\n"
+            if conversation_history:
+                for msg in conversation_history[-10:]:
+                    role_label = "User" if msg.get("role") == "user" else "Assistant"
+                    gemini_prompt += f"{role_label}: {msg.get('content', '')}\n"
+            gemini_prompt += f'User: "{query}"\n\nReturn a clear, well-formatted response with practical insights.'
+            
             response = client.models.generate_content(
                 model=model_name,
-                contents=prompt,
+                contents=gemini_prompt,
             )
             answer_text = clean_markdown_response(response.text.strip())
             resp_payload = {
@@ -445,5 +493,3 @@ Return a clear, well-formatted response with practical insights."""
     resp["answer_text"] = clean_markdown_response(resp["answer_text"])
     _AI_CHAT_CACHE[cache_key] = {"data": resp, "expires_at": now_ts + 300}
     return resp
-
-

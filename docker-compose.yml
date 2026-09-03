@@ -62,6 +62,8 @@ services:
       REDIS_URL: redis://redis:6379/0
       ALLOWED_ORIGINS: "http://localhost:3000,http://frontend:3000"
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      OPENROUTER_MODEL: ${OPENROUTER_MODEL:-openrouter/auto}
       OPENWEATHER_API_KEY: ${OPENWEATHER_API_KEY:-}
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-change_this_in_production_use_a_strong_random_key}
       JWT_EXPIRE_MINUTES: 60

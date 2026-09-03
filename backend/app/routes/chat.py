@@ -2,7 +2,7 @@ import json
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 from app.database import get_db
 from app.models.models import ChatSession, ChatMessage
 from app.services.ai_service import generate_chat_response
@@ -42,16 +42,37 @@ def chat_endpoint(request: Request, req: ChatRequest, db: Session = Depends(get_
         db.add(user_msg)
         db.commit()
         
-        # 3. Generate AI Response
+        # 3. Retrieve conversation history for context
+        conversation_history = []
+        try:
+            # Get last 20 messages from this session for context
+            recent_messages = (
+                db.query(ChatMessage)
+                .filter(ChatMessage.session_id == session.id)
+                .order_by(ChatMessage.created_at.desc())
+                .limit(20)
+                .all()
+            )
+            # Reverse to get chronological order
+            recent_messages.reverse()
+            conversation_history = [
+                {"role": msg.role, "content": msg.content}
+                for msg in recent_messages
+            ]
+        except Exception as e:
+            print(f"[Chat] Warning: Could not retrieve conversation history: {e}")
+        
+        # 4. Generate AI Response with conversation context
         ai_resp = generate_chat_response(
             query=req.query,
             db=db,
             role=req.role,
             lang_override=req.lang,
-            location_override=req.location
+            location_override=req.location,
+            conversation_history=conversation_history
         )
         
-        # 4. Save Assistant Message with metadata (weather details if any)
+        # 5. Save Assistant Message with metadata (weather details if any)
         metadata_json = None
         if "metadata" in ai_resp:
             metadata_json = json.dumps(ai_resp["metadata"])
