@@ -1,6 +1,8 @@
 @echo off
 echo Starting WeatherGPT Backend...
-start cmd /k "cd backend && .venv\Scripts\python app/main.py"
+start cmd /k "cd /d %~dp0backend && ..\.venv\Scripts\python app/main.py"
 echo Starting WeatherGPT Frontend...
-start cmd /k "cd frontend && npm run dev"
-echo Both servers starting. Frontend on http://localhost:3000, Backend on http://localhost:8000.
+start cmd /k "cd /d %~dp0frontend && npm run dev"
+echo Both servers starting!
+echo Frontend: http://localhost:3000
+echo Backend API: http://localhost:8000
