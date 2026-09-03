@@ -27,6 +27,10 @@ const API_CACHE_PATTERNS = [
 
 // ── Install: pre-cache static assets ─────────────────────────────────────────
 self.addEventListener("install", (event) => {
+  if (self.location.hostname === "localhost" || self.location.hostname === "127.0.0.1") {
+    self.skipWaiting();
+    return;
+  }
   event.waitUntil(
     caches
       .open(STATIC_CACHE)
@@ -37,6 +41,14 @@ self.addEventListener("install", (event) => {
 
 // ── Activate: clean up old caches ─────────────────────────────────────────────
 self.addEventListener("activate", (event) => {
+  if (self.location.hostname === "localhost" || self.location.hostname === "127.0.0.1") {
+    event.waitUntil(
+      caches.keys().then((keys) => Promise.all(keys.map((k) => caches.delete(k))))
+        .then(() => self.registration.unregister())
+        .then(() => self.clients.claim())
+    );
+    return;
+  }
   event.waitUntil(
     caches
       .keys()
@@ -53,6 +65,10 @@ self.addEventListener("activate", (event) => {
 
 // ── Fetch: routing strategy ───────────────────────────────────────────────────
 self.addEventListener("fetch", (event) => {
+  // Never intercept requests on localhost / development
+  if (self.location.hostname === "localhost" || self.location.hostname === "127.0.0.1") {
+    return;
+  }
   const { request } = event;
   const url = new URL(request.url);
 

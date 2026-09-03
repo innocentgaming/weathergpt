@@ -340,7 +340,7 @@ def generate_chat_response(
     location_override: Optional[str] = None,
     conversation_history: Optional[List[Dict[str, str]]] = None
 ) -> Dict[str, Any]:
-    global openrouter_key, openrouter_backup_key
+    global openrouter_key, openrouter_backup_key, GEMINI_AVAILABLE
     lang = lang_override or detect_language(query)
     
     # 1. Fetch live weather & risk data for grounding
@@ -423,8 +423,10 @@ Risk Assessment:
         if now_ts < entry["expires_at"]:
             return entry["data"]
 
-    # 2. Try OpenRouter first (fastest inference, 0.8s typical response)
-    openrouter_keys_to_try = [k for k in [openrouter_key, openrouter_backup_key] if k]
+    # 2. Try OpenRouter first
+    current_key = openrouter_key or settings.OPENROUTER_API_KEY or os.environ.get("OPENROUTER_API_KEY")
+    backup_key = openrouter_backup_key or settings.OPENROUTER_BACKUP_API_KEY or os.environ.get("OPENROUTER_BACKUP_API_KEY")
+    openrouter_keys_to_try = [k for k in [current_key, backup_key] if k]
     for key_idx, or_key in enumerate(openrouter_keys_to_try):
         try:
             model_name = settings.OPENROUTER_MODEL or "openrouter/auto"
@@ -443,8 +445,7 @@ Risk Assessment:
                 "frequency_penalty": 0.3,
                 "presence_penalty": 0.3
             }
-            # Use short timeout (3.0s) so responses never hang
-            res = _AI_HTTP_SESSION.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=payload, timeout=3.0)
+            res = _AI_HTTP_SESSION.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=payload, timeout=12.0)
             if res.status_code == 200:
                 res_data = res.json()
                 answer_text = clean_markdown_response(res_data["choices"][0]["message"]["content"].strip())
@@ -463,7 +464,7 @@ Risk Assessment:
                 _AI_CHAT_CACHE[cache_key] = {"data": resp_payload, "expires_at": now_ts + 300}
                 return resp_payload
             elif res.status_code in [401, 403]:
-                # Invalid or unauthorized key - disable to avoid slowing down subsequent requests
+                # Invalid or unauthorized key
                 if key_idx == 0:
                     openrouter_key = None
                 else:
@@ -472,10 +473,6 @@ Risk Assessment:
             else:
                 print(f"OpenRouter API Key {key_idx+1} error (Status {res.status_code}): {res.text[:200]}")
         except Exception as e:
-            if key_idx == 0:
-                openrouter_key = None
-            else:
-                openrouter_backup_key = None
             print(f"OpenRouter Key {key_idx+1} generation error: {e}")
 
     # 3. Try Gemini as secondary AI provider
@@ -509,7 +506,6 @@ Risk Assessment:
             _AI_CHAT_CACHE[cache_key] = {"data": resp_payload, "expires_at": now_ts + 300}
             return resp_payload
         except Exception as e:
-            global GEMINI_AVAILABLE
             GEMINI_AVAILABLE = False
             print(f"Gemini generation error: {e}. Temporarily falling back to dynamic local NLP.")
 

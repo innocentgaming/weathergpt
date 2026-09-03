@@ -34,4 +34,9 @@ Thumbs.db
 .env.test.local
 .env.production.local
 *.db
+*.db-*
+*.sqlite
+*.sqlite3
+test_render.html
+
 
