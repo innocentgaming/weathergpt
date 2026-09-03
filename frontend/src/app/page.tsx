@@ -428,6 +428,9 @@ export default function WeatherGPT() {
           wind_speed: 18,
           rain_probability: 88,
           air_quality: "Good (AQI 38)",
+          pressure: 1008,
+          visibility: 6.5,
+          uv_index: 3.2,
           sunrise: "06:14 AM",
           sunset: "06:58 PM",
           icon: "cloud-lightning",
@@ -597,13 +600,36 @@ export default function WeatherGPT() {
         if (voicePlayback) {
           speakText(data.answer_text);
         }
+      } else {
+        throw new Error(`Server returned HTTP ${res.status}`);
       }
     } catch (e) {
-      console.error(e);
+      console.error("Chat error:", e);
+      // Contextual local rule-based response if backend is offline or warming up
+      const qLower = textToSend.toLowerCase();
+      const locDisplay = weather?.location?.replace(/\s*\(.*?\)/, '') || searchLocation || 'Pune';
+      const temp = weather?.current?.temp ?? 26;
+      const cond = weather?.current?.condition ?? 'Partly Cloudy';
+      const rainProb = weather?.current?.rain_probability ?? 30;
+      
+      let fallbackText = `Hello! Currently in ${locDisplay}, temperature is ${temp}°C with ${cond} and rain probability of ${rainProb}%. How can I assist you further?`;
+      
+      if (qLower.includes('rain') || qLower.includes('पाऊस') || qLower.includes('बारिश')) {
+        fallbackText = rainProb > 40
+          ? `Yes, rain is likely in ${locDisplay} (Probability: ${rainProb}%, Condition: ${cond}, Temp: ${temp}°C). Please carry rain gear.`
+          : `No heavy rain expected in ${locDisplay} today (Rain probability: ${rainProb}%, Condition: ${cond}, Temp: ${temp}°C).`;
+      } else if (qLower.includes('travel') || qLower.includes('route') || qLower.includes('highway') || qLower.includes('drive')) {
+        fallbackText = `Route advisory: Weather in ${locDisplay} is ${cond} with ${temp}°C. Visibility is normal. Drive safely and monitor live alerts.`;
+      } else if (qLower.includes('irrigate') || qLower.includes('crop') || qLower.includes('farm') || currentMode === 'farmer') {
+        fallbackText = rainProb >= 50
+          ? `Agro Advisory: Rain is forecast for ${locDisplay} today (${rainProb}%). Delaying irrigation is advised to avoid waterlogging.`
+          : `Agro Advisory: Rain probability is low (${rainProb}%) in ${locDisplay}. You may proceed with standard crop irrigation.`;
+      }
+
       setChatMessages(prev => [...prev, {
         id: generateMessageId() + 2,
         role: 'assistant' as const,
-        content: "Sorry, I am having trouble connecting to the AI brain right now. The local rule-based engine is offline.",
+        content: fallbackText,
         created_at: new Date().toISOString()
       }]);
     } finally {

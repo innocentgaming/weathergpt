@@ -164,6 +164,29 @@ def get_local_nlp_response(query: str, db: Session, role: str, lang: str, defaul
         first_alert = active_alerts[0]
         alerts_summary = f" [ALERT: {first_alert.get('title', 'Weather Alert')}]"
 
+    # 0. Greeting / General Conversational Intent
+    greetings = ["hi", "hello", "hey", "namaste", "hola", "greetings", "नमस्ते", "नमस्कार", "हाय"]
+    words_in_query = [w.strip("!?,.") for w in q_lower.split()]
+    if any(w in words_in_query for w in greetings) and len(words_in_query) <= 4:
+        if lang == "hi":
+            ans_text = f"नमस्ते! मैं WeatherGPT हूँ, आपका मौसम और आपदा प्रबंधन सहायक। वर्तमान में {loc_display} में तापमान {temp}°C और स्थिति {cond} है। मैं आपकी क्या मदद कर सकता हूँ?"
+        elif lang == "mr":
+            ans_text = f"नमस्कार! मी WeatherGPT आहे, आपला हवामान व आपत्ती व्यवस्थापन सहाय्यक. सध्या {loc_display} चे तापमान {temp}°C असून हवामान {cond} आहे. मी आपली कशी मदत करू शकतो?"
+        else:
+            ans_text = f"Hello! I am WeatherGPT, your AI meteorology and disaster management copilot. Currently in {loc_display}, it is {temp}°C with {cond}. How can I assist you with weather forecasts, travel routes, or safety alerts today?"
+
+        return {
+            "answer_text": ans_text,
+            "data_sources": "WeatherGPT AI Copilot",
+            "confidence_note": "Direct response.",
+            "alert_level": "LOW",
+            "metadata": {
+                "type": "greeting",
+                "weather_details": weather_data,
+                "risk_details": risk_data
+            }
+        }
+
     # 1. Travel / Route Intent
     if any(w in q_lower for w in ["travel", "प्रवास", "यात्रा", "route", "highway", "drive"]) or ("pune" in q_lower and "mumbai" in q_lower):
         from_loc = "Pune"
